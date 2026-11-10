@@ -22,5 +22,40 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  /// Turnos atendidos por este usuario (solo aplica a profesionales).
+  turnos Turno[]
+
   @@map("users")
+}
+
+model Paciente {
+  id        String   @id @default(uuid())
+  nombre    String
+  apellido  String
+  telefono  String?
+  email     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  turnos Turno[]
+
+  @@map("pacientes")
+}
+
+model Turno {
+  id            String   @id @default(uuid())
+  inicio        DateTime
+  fin           DateTime
+  notas         String?
+  profesionalId String   @map("profesional_id")
+  pacienteId    String   @map("paciente_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  profesional User     @relation(fields: [profesionalId], references: [id])
+  paciente    Paciente @relation(fields: [pacienteId], references: [id])
+
+  @@index([inicio])
+  @@index([profesionalId, inicio])
+  @@map("turnos")
 }
