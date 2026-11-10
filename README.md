@@ -85,6 +85,20 @@ El esquema vive en [`prisma/schema.prisma`](prisma/schema.prisma) y cada cambio 
 | `role` | enum `Role` | `gestion` o `profesional`. |
 | `created_at`, `updated_at` | timestamp | Automáticos. |
 
+**`pacientes`**
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `id` | UUID (texto) | Clave primaria, se genera automáticamente. |
+| `nombre`, `apellido` | texto | Obligatorios. |
+| `dni` | texto, único, opcional | Solo dígitos, sin puntos (ej. `35421980`). |
+| `telefono` | texto, opcional | Formato internacional (ej. `+5491144441111`). |
+| `email` | texto, opcional | |
+| `cobertura` | texto, opcional | Obra social o prepaga y plan (ej. `OSDE 310`). |
+| `notas_administrativas` | texto, opcional | Preferencias y avisos. **Nunca información clínica.** |
+| `profesional_asignado_id` | UUID, opcional | Referencia a `users.id`. Si se borra el profesional, queda vacío. |
+| `created_at`, `updated_at` | timestamp | Automáticos. |
+
 ## Usuarios y roles
 
 Hay dos roles, definidos en [`src/constants/roles.constants.js`](src/constants/roles.constants.js). Tienen que coincidir con los del front-end y con el enum `Role` de Prisma.

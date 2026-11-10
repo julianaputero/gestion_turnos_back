@@ -25,20 +25,33 @@ model User {
   /// Turnos atendidos por este usuario (solo aplica a profesionales).
   turnos Turno[]
 
+  /// Pacientes asignados a este usuario (solo aplica a profesionales).
+  pacientesAsignados Paciente[]
+
   @@map("users")
 }
 
 model Paciente {
-  id        String   @id @default(uuid())
-  nombre    String
-  apellido  String
-  telefono  String?
-  email     String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id                    String   @id @default(uuid())
+  nombre                String
+  apellido              String
+  /// Solo dígitos, sin puntos (ej. "35421980"). Único entre pacientes.
+  dni                   String?  @unique
+  telefono              String?
+  email                 String?
+  /// Obra social / prepaga y plan (ej. "OSDE 310").
+  cobertura             String?
+  /// Notas administrativas (preferencias, avisos). Nunca información clínica.
+  notasAdministrativas  String?  @map("notas_administrativas")
+  profesionalAsignadoId String?  @map("profesional_asignado_id")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
 
-  turnos Turno[]
+  profesionalAsignado User?   @relation(fields: [profesionalAsignadoId], references: [id], onDelete: SetNull)
+  turnos              Turno[]
 
+  @@index([profesionalAsignadoId])
+  @@index([apellido, nombre])
   @@map("pacientes")
 }
 
