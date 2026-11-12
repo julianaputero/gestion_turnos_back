@@ -28,7 +28,50 @@ model User {
   /// Pacientes asignados a este usuario (solo aplica a profesionales).
   pacientesAsignados Paciente[]
 
+  /// Ficha del profesional (solo existe para usuarios con rol profesional).
+  profesional Profesional?
+
   @@map("users")
+}
+
+/// Debe coincidir con MODALIDADES (src/constants/profesionales.constants.js) y con el front-end.
+enum Modalidad {
+  presencial
+  virtual
+}
+
+/// Debe coincidir con TONOS_COMUNICACION (src/constants/profesionales.constants.js) y con el front-end.
+enum TonoComunicacion {
+  cercano
+  formal
+  neutro
+}
+
+/// Ficha de un profesional: datos de contacto, agenda, honorarios y reglas de mensajes.
+/// Relación 1 a 1 con `users` (rol profesional).
+model Profesional {
+  id                     String           @id @default(uuid())
+  userId                 String           @unique @map("user_id")
+  especialidad           String?
+  matricula              String?
+  activo                 Boolean          @default(true)
+  /// Honorario base por consulta (pesos).
+  honorarioBase          Decimal?         @map("honorario_base") @db.Decimal(12, 2)
+  telefono               String?
+  modalidades            Modalidad[]      @default([])
+  /// Días de atención: 0 = domingo … 6 = sábado.
+  diasAtencion           Int[]            @default([]) @map("dias_atencion")
+  /// Con cuántas horas de anticipación se le avisa al paciente antes del turno.
+  recordatorioHorasAntes Int              @default(24) @map("recordatorio_horas_antes")
+  tonoComunicacion       TonoComunicacion @default(neutro) @map("tono_comunicacion")
+  /// Token del link de solo lectura que se le comparte al profesional.
+  linkToken              String           @unique @map("link_token")
+  createdAt              DateTime         @default(now()) @map("created_at")
+  updatedAt              DateTime         @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profesionales")
 }
 
 model Paciente {

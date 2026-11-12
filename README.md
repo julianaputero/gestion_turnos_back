@@ -99,6 +99,24 @@ El esquema vive en [`prisma/schema.prisma`](prisma/schema.prisma) y cada cambio 
 | `profesional_asignado_id` | UUID, opcional | Referencia a `users.id`. Si se borra el profesional, queda vacío. |
 | `created_at`, `updated_at` | timestamp | Automáticos. |
 
+**`profesionales`** — ficha de cada usuario con rol `profesional` (1 a 1 con `users`)
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `id` | UUID (texto) | Clave primaria. |
+| `user_id` | UUID, único | Referencia a `users.id`. Si se borra el usuario, se borra la ficha. |
+| `especialidad`, `matricula`, `telefono` | texto, opcional | |
+| `activo` | booleano | Por defecto `true`. |
+| `honorario_base` | decimal(12,2), opcional | Honorario por consulta, en pesos. |
+| `modalidades` | lista de enum `Modalidad` | `presencial`, `virtual`. |
+| `dias_atencion` | lista de enteros | 0 = domingo … 6 = sábado. |
+| `recordatorio_horas_antes` | entero | Horas de anticipación con que se avisa al paciente. Por defecto `24`. |
+| `tono_comunicacion` | enum `TonoComunicacion` | `cercano`, `formal` o `neutro` (por defecto). |
+| `link_token` | texto, único | Token del link de solo lectura. Se genera al crear el profesional. |
+| `created_at`, `updated_at` | timestamp | Automáticos. |
+
+Todo profesional nuevo (registro o seed) se crea con su ficha. La migración `add_profesionales` le creó una ficha vacía a cada profesional que ya existía.
+
 ## Usuarios y roles
 
 Hay dos roles, definidos en [`src/constants/roles.constants.js`](src/constants/roles.constants.js). Tienen que coincidir con los del front-end y con el enum `Role` de Prisma.

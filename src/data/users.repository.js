@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const prisma = require('./prisma');
 const { USER_ROLES } = require('../constants/roles.constants');
 const { PASSWORD_SALT_ROUNDS } = require('../constants/auth.constants');
+const { generateLinkToken } = require('./profesionales.repository');
 
 /** Campos públicos de un usuario — nunca incluye el hash de la contraseña. */
 const PUBLIC_USER_FIELDS = { id: true, nombre: true, email: true, role: true };
@@ -34,7 +35,16 @@ async function createUser({ nombre, email, password, role }) {
   const passwordHash = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
 
   return prisma.user.create({
-    data: { nombre, email: normalizeEmail(email), passwordHash, role },
+    data: {
+      nombre,
+      email: normalizeEmail(email),
+      passwordHash,
+      role,
+      // Todo profesional nace con su ficha (valores por defecto).
+      ...(role === USER_ROLES.profesional
+        ? { profesional: { create: { linkToken: generateLinkToken() } } }
+        : {}),
+    },
     select: PUBLIC_USER_FIELDS,
   });
 }
