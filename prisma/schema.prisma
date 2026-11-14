@@ -26,7 +26,7 @@ model User {
   turnos Turno[]
 
   /// Pacientes asignados a este usuario (solo aplica a profesionales).
-  pacientesAsignados Paciente[]
+  pacientesAsignados PacienteProfesional[]
 
   /// Ficha del profesional (solo existe para usuarios con rol profesional).
   profesional Profesional?
@@ -75,27 +75,44 @@ model Profesional {
 }
 
 model Paciente {
-  id                    String   @id @default(uuid())
-  nombre                String
-  apellido              String
+  id                   String   @id @default(uuid())
+  nombre               String
+  apellido             String
   /// Solo dígitos, sin puntos (ej. "35421980"). Único entre pacientes.
-  dni                   String?  @unique
-  telefono              String?
-  email                 String?
+  dni                  String?  @unique
+  telefono             String?
+  email                String?
   /// Obra social / prepaga y plan (ej. "OSDE 310").
-  cobertura             String?
+  cobertura            String?
   /// Notas administrativas (preferencias, avisos). Nunca información clínica.
-  notasAdministrativas  String?  @map("notas_administrativas")
-  profesionalAsignadoId String?  @map("profesional_asignado_id")
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
+  notasAdministrativas String?  @map("notas_administrativas")
+  /// Baja lógica: un paciente inactivo no aparece en los listados por defecto ni puede
+  /// recibir turnos nuevos, pero conserva sus datos y su historial de turnos.
+  activo               Boolean  @default(true)
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
 
-  profesionalAsignado User?   @relation(fields: [profesionalAsignadoId], references: [id], onDelete: SetNull)
-  turnos              Turno[]
+  /// Profesionales asignados (al menos uno; lo valida el back-end).
+  /// Si se borra la última asignación, un trigger borra al paciente (ver migración).
+  profesionales PacienteProfesional[]
+  turnos        Turno[]
 
-  @@index([profesionalAsignadoId])
   @@index([apellido, nombre])
   @@map("pacientes")
+}
+
+/// Asignación paciente ↔ profesional (muchos a muchos).
+model PacienteProfesional {
+  pacienteId    String   @map("paciente_id")
+  profesionalId String   @map("profesional_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  paciente    Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  profesional User     @relation(fields: [profesionalId], references: [id], onDelete: Cascade)
+
+  @@id([pacienteId, profesionalId])
+  @@index([profesionalId])
+  @@map("paciente_profesionales")
 }
 
 model Turno {
@@ -109,7 +126,7 @@ model Turno {
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   profesional User     @relation(fields: [profesionalId], references: [id])
-  paciente    Paciente @relation(fields: [pacienteId], references: [id])
+  paciente    Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
 
   @@index([inicio])
   @@index([profesionalId, inicio])

@@ -7,7 +7,7 @@ const {
   updateHorario,
   deleteTurno,
 } = require('../data/turnos.repository');
-const { findPacienteById } = require('../data/pacientes.repository');
+const { findPacienteById, isProfesionalAsignado } = require('../data/pacientes.repository');
 const { findProfesionalById } = require('../data/profesionales.repository');
 const { TURNOS_MAX_RANGE_DAYS } = require('../constants/turnos.constants');
 
@@ -25,12 +25,25 @@ function formatHora(date) {
 
 const HORARIO_INVALIDO = 'Indicá un horario válido: el fin tiene que ser posterior al inicio.';
 
-/** Mensaje de error si el profesional ya tiene otro turno en ese horario; si no, null. */
-async function overlapMessage({ profesionalId, inicio, fin, excludeId }) {
-  const choque = await findOverlappingTurno({ profesionalId, inicio, fin, excludeId });
-  if (!choque) return null;
-  const paciente = `${choque.paciente.nombre} ${choque.paciente.apellido}`;
-  return `Se superpone con el turno de ${paciente} (${formatHora(choque.inicio)} – ${formatHora(choque.fin)}).`;
+/**
+ * Mensaje de error si el horario choca con otro turno; si no, null. Choca si:
+ * - el profesional ya tiene otro turno en ese horario, o
+ * - el paciente ya tiene otro turno en ese horario (con cualquier profesional).
+ */
+async function overlapMessage({ profesionalId, pacienteId, inicio, fin, excludeId }) {
+  const choqueProfesional = await findOverlappingTurno({ profesionalId, inicio, fin, excludeId });
+  if (choqueProfesional) {
+    const { paciente } = choqueProfesional;
+    return `Se superpone con el turno de ${paciente.nombre} ${paciente.apellido} (${formatHora(choqueProfesional.inicio)} – ${formatHora(choqueProfesional.fin)}).`;
+  }
+
+  const choquePaciente = await findOverlappingTurno({ pacienteId, inicio, fin, excludeId });
+  if (choquePaciente) {
+    const { paciente, profesional } = choquePaciente;
+    return `${paciente.nombre} ${paciente.apellido} ya tiene un turno con ${profesional.nombre} en ese horario (${formatHora(choquePaciente.inicio)} – ${formatHora(choquePaciente.fin)}).`;
+  }
+
+  return null;
 }
 
 /** GET /api/turnos?desde=ISO&hasta=ISO[&profesionalId=...] */
@@ -72,14 +85,25 @@ router.post('/', async (req, res) => {
   if (!inicio || !fin || fin <= inicio) {
     return res.status(400).json({ message: HORARIO_INVALIDO });
   }
-  if (!(await findPacienteById(pacienteId))) {
+  const paciente = await findPacienteById(pacienteId);
+  if (!paciente) {
     return res.status(400).json({ message: 'El paciente no existe.' });
+  }
+  if (!paciente.activo) {
+    return res
+      .status(400)
+      .json({ message: 'El paciente está inactivo. Reactivalo para darle turnos nuevos.' });
   }
   if (!(await findProfesionalById(profesionalId))) {
     return res.status(400).json({ message: 'El profesional no existe.' });
   }
+  if (!(await isProfesionalAsignado(pacienteId, profesionalId))) {
+    return res.status(400).json({
+      message: 'El paciente no está asignado a ese profesional. Asignáselo desde Pacientes.',
+    });
+  }
 
-  const choque = await overlapMessage({ profesionalId, inicio, fin });
+  const choque = await overlapMessage({ profesionalId, pacienteId, inicio, fin });
   if (choque) {
     return res.status(409).json({ message: choque });
   }
@@ -110,6 +134,7 @@ router.patch('/:id', async (req, res) => {
 
   const choque = await overlapMessage({
     profesionalId: turno.profesionalId,
+    pacienteId: turno.pacienteId,
     inicio,
     fin,
     excludeId: turno.id,

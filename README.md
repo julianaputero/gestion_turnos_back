@@ -57,6 +57,7 @@ Todo se configura con variables de entorno en `back-end/.env`. Ese archivo **no 
 | `npm run db:migrate` | `prisma migrate dev`: aplica las migraciones pendientes y, si cambió el esquema, crea una nueva. |
 | `npm run db:deploy` | `prisma migrate deploy`: aplica migraciones pendientes sin crear nuevas (para producción). |
 | `npm run db:seed` | Crea los usuarios iniciales del `.env`. Se puede correr varias veces: no duplica emails existentes. |
+| `npm run db:seed:demo` | Datos de demo: 12 pacientes ficticios repartidos entre los profesionales, con turnos. Solo corre si no hay pacientes. Con `-- --reset` **borra todos los turnos y pacientes** y los vuelve a crear. |
 | `npm run db:studio` | Abre Prisma Studio, un visor web de los datos. |
 
 ## Base de datos y migraciones
@@ -96,8 +97,26 @@ El esquema vive en [`prisma/schema.prisma`](prisma/schema.prisma) y cada cambio 
 | `email` | texto, opcional | |
 | `cobertura` | texto, opcional | Obra social o prepaga y plan (ej. `OSDE 310`). |
 | `notas_administrativas` | texto, opcional | Preferencias y avisos. **Nunca información clínica.** |
-| `profesional_asignado_id` | UUID, opcional | Referencia a `users.id`. Si se borra el profesional, queda vacío. |
+| `activo` | booleano | Por defecto `true`. `false` = baja lógica (ver abajo). |
 | `created_at`, `updated_at` | timestamp | Automáticos. |
+
+Baja de pacientes, dos opciones:
+- **Desactivar** (`PATCH /api/pacientes/:id/estado` con `{ "activo": false }`; `true` lo reactiva): **cancela (borra) sus turnos futuros** y conserva sus datos y sus turnos pasados (responde `{ paciente, turnosCancelados }`). El paciente no aparece en `GET /api/pacientes` por defecto y no se le pueden crear turnos nuevos. Para verlos: `?estado=inactivos` o `?estado=todos`.
+- **Eliminar** (`DELETE /api/pacientes/:id`, responde `{ "turnosEliminados": N }`): borra al paciente y **todos sus turnos** para siempre.
+
+**`paciente_profesionales`** — profesionales asignados a cada paciente (muchos a muchos)
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `paciente_id` | UUID | Referencia a `pacientes.id`. Clave primaria compuesta con `profesional_id`. |
+| `profesional_id` | UUID | Referencia a `users.id` (rol `profesional`). |
+| `created_at` | timestamp | Automático. |
+
+Reglas:
+- Todo paciente tiene **al menos un** profesional asignado. El alta lo valida en el back-end (`POST /api/pacientes` exige `profesionalIds` con al menos un id).
+- Si se borra un profesional, sus asignaciones se borran en cascada. Un trigger (`paciente_profesionales_borrar_huerfanos`) borra a los pacientes que quedaron sin ningún profesional, junto con sus turnos. Los que siguen asignados a otro profesional no se tocan.
+- Si al editar un paciente se le quita un profesional, se cancelan (borran) los turnos futuros del paciente con ese profesional; los pasados se conservan (`PATCH /api/pacientes/:id` responde `{ paciente, turnosCancelados }`).
+- Al editar asignaciones hay que agregar las nuevas **antes** de quitar las viejas; si no, el trigger borraría al paciente al quedar momentáneamente sin profesionales.
 
 **`profesionales`** — ficha de cada usuario con rol `profesional` (1 a 1 con `users`)
 

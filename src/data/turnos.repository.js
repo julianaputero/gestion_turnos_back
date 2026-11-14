@@ -27,18 +27,19 @@ function listTurnos({ desde, hasta, profesionalId }) {
 function findTurnoById(id) {
   return prisma.turno.findUnique({
     where: { id },
-    select: { ...TURNO_FIELDS, profesionalId: true },
+    select: { ...TURNO_FIELDS, profesionalId: true, pacienteId: true },
   });
 }
 
 /**
- * Otro turno del mismo profesional que se superpone con [inicio, fin), o null.
+ * Otro turno del mismo profesional —o del mismo paciente, si se pasa `pacienteId` en lugar
+ * de `profesionalId`— que se superpone con [inicio, fin), o null.
  * `excludeId` evita que un turno choque consigo mismo al editarlo.
  */
-function findOverlappingTurno({ profesionalId, inicio, fin, excludeId }) {
+function findOverlappingTurno({ profesionalId, pacienteId, inicio, fin, excludeId }) {
   return prisma.turno.findFirst({
     where: {
-      profesionalId,
+      ...(profesionalId ? { profesionalId } : { pacienteId }),
       id: { not: excludeId },
       inicio: { lt: fin },
       fin: { gt: inicio },

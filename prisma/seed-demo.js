@@ -1,11 +1,11 @@
 /**
- * Datos de DEMO para desarrollo: pacientes ficticios y turnos repartidos entre
- * los profesionales que ya existen en la base, desde el mes pasado hasta el
- * mes que viene. No usar en producción.
+ * Datos de DEMO para desarrollo: pacientes ficticios repartidos en partes iguales
+ * entre los profesionales que ya existen (cada paciente asignado a uno), y turnos
+ * de cada paciente con su profesional, desde el mes pasado hasta el que viene.
+ * No usar en producción.
  *
- * Solo corre si la tabla de turnos está vacía (no duplica datos).
- *
- *   npm run db:seed:demo
+ *   npm run db:seed:demo              # solo si no hay pacientes cargados
+ *   npm run db:seed:demo -- --reset   # BORRA todos los turnos y pacientes y los vuelve a crear
  */
 require('../src/config/env');
 const prisma = require('../src/data/prisma');
@@ -54,15 +54,25 @@ function seededRandom(seed) {
   };
 }
 
-async function main() {
-  if ((await prisma.turno.count()) > 0) {
-    console.log('[seed-demo] Ya hay turnos cargados, se omite.');
-    return;
-  }
+const RESET = process.argv.includes('--reset');
 
+async function main() {
   const profesionales = await listProfesionales();
   if (profesionales.length === 0) {
     console.log('[seed-demo] No hay profesionales en la base. Corré primero `npm run db:seed`.');
+    return;
+  }
+
+  if (RESET) {
+    const [turnosBorrados, pacientesBorrados] = await prisma.$transaction([
+      prisma.turno.deleteMany(),
+      prisma.paciente.deleteMany(),
+    ]);
+    console.log(
+      `[seed-demo] --reset: borrados ${pacientesBorrados.count} pacientes y ${turnosBorrados.count} turnos.`,
+    );
+  } else if ((await prisma.paciente.count()) > 0) {
+    console.log('[seed-demo] Ya hay pacientes cargados, se omite (usá --reset para recrearlos).');
     return;
   }
 
@@ -85,11 +95,23 @@ async function main() {
           email: `${usuarioEmail}@ejemplo.com`,
           cobertura: pick(DEMO_COBERTURAS),
           notasAdministrativas: pick(DEMO_NOTAS),
-          profesionalAsignadoId: pick(profesionales).id,
+          // Reparto en partes iguales: paciente 0 → profesional 0, 1 → 1, 2 → 0, …
+          profesionales: {
+            create: { profesionalId: profesionales[index % profesionales.length].id },
+          },
         },
+        select: { id: true },
       }),
     );
   }
+
+  /** Pacientes de cada profesional, para que los turnos sean siempre con su profesional. */
+  const pacientesPorProfesional = new Map(
+    profesionales.map((profesional, p) => [
+      profesional.id,
+      pacientes.filter((_, index) => index % profesionales.length === p),
+    ]),
+  );
 
   const hoy = new Date();
   const desde = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
@@ -101,6 +123,8 @@ async function main() {
     if (diaSemana === 0 || diaSemana === 6) continue; // sin turnos el fin de semana
 
     for (const profesional of profesionales) {
+      const suyos = pacientesPorProfesional.get(profesional.id);
+      if (suyos.length === 0) continue;
       const cantidad = Math.floor(random() * (TURNOS_POR_DIA_MAX + 1));
       const slots = [...SLOTS].sort(() => random() - 0.5).slice(0, cantidad);
 
@@ -111,7 +135,7 @@ async function main() {
           inicio,
           fin,
           profesionalId: profesional.id,
-          pacienteId: pick(pacientes).id,
+          pacienteId: pick(suyos).id,
         });
       }
     }

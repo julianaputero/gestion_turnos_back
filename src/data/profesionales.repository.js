@@ -17,6 +17,11 @@ function listProfesionales() {
   });
 }
 
+/** Cuántos de estos ids son profesionales existentes. */
+function countProfesionales(ids) {
+  return prisma.user.count({ where: { id: { in: ids }, role: USER_ROLES.profesional } });
+}
+
 function findProfesionalById(id) {
   return prisma.user.findFirst({
     where: { id, role: USER_ROLES.profesional },
@@ -97,6 +102,7 @@ async function updateFicha(userId, cambios) {
 module.exports = {
   listProfesionales,
   findProfesionalById,
+  countProfesionales,
   listFichas,
   updateFicha,
   generateLinkToken,
