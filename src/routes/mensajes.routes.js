@@ -2,9 +2,13 @@ const { Router } = require('express');
 const { listPlantillas, savePlantilla, createMensaje } = require('../data/mensajes.repository');
 const { findPacienteById, isProfesionalAsignado } = require('../data/pacientes.repository');
 const { TIPOS_MENSAJE, MENSAJE_MAX } = require('../constants/mensajes.constants');
+const { requireGestion } = require('../middleware/auth');
 const { TONOS_COMUNICACION } = require('../constants/profesionales.constants');
 
 const router = Router();
+
+// Mensajes y plantillas: solo Gestión.
+router.use(requireGestion);
 
 const isTipo = (tipo) => Object.values(TIPOS_MENSAJE).includes(tipo);
 

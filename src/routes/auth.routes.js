@@ -1,22 +1,25 @@
 const { Router } = require('express');
 const { findByEmail, verifyCredentials, addProfesional } = require('../data/users.repository');
 const { PASSWORD_MIN_LENGTH } = require('../constants/auth.constants');
+const { signToken } = require('../middleware/auth');
 
 const router = Router();
 
+/** POST /api/auth/login — Body: { email, password, recordarme? } → { user, token } */
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body ?? {};
+  const { email, password, recordarme } = req.body ?? {};
   const user = await verifyCredentials(email, password);
 
   if (!user) {
     return res.status(401).json({ message: 'Email o contraseña incorrectos' });
   }
 
-  return res.json({ user });
+  return res.json({ user, token: signToken(user, recordarme === true) });
 });
 
+/** POST /api/auth/register — Body: { nombre, email, password, recordarme? } → { user, token } */
 router.post('/register', async (req, res) => {
-  const { nombre, email, password } = req.body ?? {};
+  const { nombre, email, password, recordarme } = req.body ?? {};
 
   if (
     typeof nombre !== 'string' ||
@@ -36,7 +39,7 @@ router.post('/register', async (req, res) => {
   }
 
   const user = await addProfesional({ nombre: nombre.trim(), email, password });
-  return res.status(201).json({ user });
+  return res.status(201).json({ user, token: signToken(user, recordarme === true) });
 });
 
 module.exports = router;

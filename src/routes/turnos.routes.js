@@ -12,6 +12,7 @@ const { findPacienteById, isProfesionalAsignado } = require('../data/pacientes.r
 const { findProfesionalById } = require('../data/profesionales.repository');
 const { TURNOS_MAX_RANGE_DAYS } = require('../constants/turnos.constants');
 
+const { requireGestion, profesionalVisible } = require('../middleware/auth');
 const router = Router();
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -68,14 +69,14 @@ router.get('/', async (req, res) => {
   const turnos = await listTurnos({
     desde,
     hasta,
-    profesionalId: typeof profesionalId === 'string' && profesionalId ? profesionalId : undefined,
+    profesionalId: profesionalVisible(req, profesionalId),
   });
 
   return res.json({ turnos });
 });
 
 /** GET /api/turnos/proximo?pacienteId=...&profesionalId=... — { turno } o { turno: null }. */
-router.get('/proximo', async (req, res) => {
+router.get('/proximo', requireGestion, async (req, res) => {
   const { pacienteId, profesionalId } = req.query;
   if (typeof pacienteId !== 'string' || typeof profesionalId !== 'string') {
     return res.status(400).json({ message: 'Indicá el paciente y el profesional.' });
@@ -84,7 +85,7 @@ router.get('/proximo', async (req, res) => {
 });
 
 /** POST /api/turnos — Body: { pacienteId, profesionalId, inicio: ISO, fin: ISO, notas? } */
-router.post('/', async (req, res) => {
+router.post('/', requireGestion, async (req, res) => {
   const { pacienteId, profesionalId, notas } = req.body ?? {};
   const inicio = parseDate(req.body?.inicio);
   const fin = parseDate(req.body?.fin);
@@ -129,7 +130,7 @@ router.post('/', async (req, res) => {
 });
 
 /** PATCH /api/turnos/:id — cambia el horario. Body: { inicio: ISO, fin: ISO } */
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', requireGestion, async (req, res) => {
   const inicio = parseDate(req.body?.inicio);
   const fin = parseDate(req.body?.fin);
 
@@ -157,7 +158,7 @@ router.patch('/:id', async (req, res) => {
 });
 
 /** DELETE /api/turnos/:id */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireGestion, async (req, res) => {
   const turno = await findTurnoById(req.params.id);
   if (!turno) {
     return res.status(404).json({ message: 'El turno no existe.' });

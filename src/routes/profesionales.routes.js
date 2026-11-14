@@ -9,6 +9,7 @@ const {
 } = require('../constants/profesionales.constants');
 const { normalizeTelefono } = require('../utils/telefono');
 
+const { requireGestion, profesionalVisible } = require('../middleware/auth');
 const router = Router();
 
 const DIAS_VALIDOS = [0, 1, 2, 3, 4, 5, 6];
@@ -94,17 +95,22 @@ function parseFicha(body) {
   return { cambios };
 }
 
-router.get('/', async (_req, res) => {
-  res.json({ profesionales: await listProfesionales() });
+/** GET /api/profesionales — id y nombre. Un Profesional solo se ve a sí mismo. */
+router.get('/', async (req, res) => {
+  const profesionales = await listProfesionales();
+  const soloYo = profesionalVisible(req);
+  res.json({
+    profesionales: soloYo ? profesionales.filter((p) => p.id === soloYo) : profesionales,
+  });
 });
 
 /** GET /api/profesionales/fichas — ficha completa de cada profesional. */
-router.get('/fichas', async (_req, res) => {
+router.get('/fichas', requireGestion, async (_req, res) => {
   res.json({ fichas: await listFichas() });
 });
 
 /** PATCH /api/profesionales/:id/ficha — actualización parcial de la ficha (`:id` = id del usuario). */
-router.patch('/:id/ficha', async (req, res) => {
+router.patch('/:id/ficha', requireGestion, async (req, res) => {
   const body = req.body;
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return res.status(400).json({ message: 'Enviá los datos de la ficha.' });

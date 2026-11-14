@@ -31,6 +31,11 @@ async function verifyCredentials(email, password) {
   return { id, nombre, email: record.email, role };
 }
 
+/** Usuario público por id, o null (ej. si se borró después de iniciar sesión). */
+function findById(id) {
+  return prisma.user.findUnique({ where: { id }, select: PUBLIC_USER_FIELDS });
+}
+
 async function createUser({ nombre, email, password, role }) {
   const passwordHash = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
 
@@ -54,4 +59,4 @@ function addProfesional({ nombre, email, password }) {
   return createUser({ nombre, email, password, role: USER_ROLES.profesional });
 }
 
-module.exports = { findByEmail, verifyCredentials, createUser, addProfesional, normalizeEmail };
+module.exports = { findById, findByEmail, verifyCredentials, createUser, addProfesional, normalizeEmail };

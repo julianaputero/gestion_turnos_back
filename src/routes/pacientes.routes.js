@@ -17,6 +17,7 @@ const {
   PACIENTE_ESTADO_DEFAULT,
 } = require('../constants/pacientes.constants');
 
+const { requireGestion, profesionalVisible } = require('../middleware/auth');
 const router = Router();
 
 /** Texto opcional: string recortado o null. Devuelve `undefined` si el tipo es inválido. */
@@ -81,7 +82,7 @@ router.get('/', async (req, res) => {
 
   const pacientes = await listPacientes({
     q: typeof q === 'string' ? q : undefined,
-    profesionalId: typeof profesionalId === 'string' && profesionalId ? profesionalId : undefined,
+    profesionalId: profesionalVisible(req, profesionalId),
     estado,
   });
   return res.json({ pacientes });
@@ -109,7 +110,7 @@ async function validatePaciente(body, pacienteId) {
 }
 
 /** POST /api/pacientes — alta de paciente. */
-router.post('/', async (req, res) => {
+router.post('/', requireGestion, async (req, res) => {
   const { data, status, message } = await validatePaciente(req.body);
   if (!data) {
     return res.status(status).json({ message });
@@ -124,7 +125,7 @@ router.post('/', async (req, res) => {
  * Si se quita un profesional, se cancelan los turnos futuros con él.
  * Responde { paciente, turnosCancelados }.
  */
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', requireGestion, async (req, res) => {
   const { data, status, message } = await validatePaciente(req.body, req.params.id);
   if (!data) {
     return res.status(status).json({ message });
@@ -142,7 +143,7 @@ router.patch('/:id', async (req, res) => {
  * PATCH /api/pacientes/:id/estado — baja lógica o reactivación. Body: { activo: boolean }
  * Al desactivar se cancelan los turnos futuros. Responde { paciente, turnosCancelados }.
  */
-router.patch('/:id/estado', async (req, res) => {
+router.patch('/:id/estado', requireGestion, async (req, res) => {
   const activo = req.body?.activo;
   if (typeof activo !== 'boolean') {
     return res.status(400).json({ message: 'Indicá si el paciente queda activo o inactivo.' });
@@ -157,7 +158,7 @@ router.patch('/:id/estado', async (req, res) => {
 });
 
 /** DELETE /api/pacientes/:id — borrado definitivo del paciente y de todos sus turnos. */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireGestion, async (req, res) => {
   const turnosEliminados = await deletePaciente(req.params.id);
   if (turnosEliminados === null) {
     return res.status(404).json({ message: 'El paciente no existe.' });

@@ -43,6 +43,7 @@ Todo se configura con variables de entorno en `back-end/.env`. Ese archivo **no 
 | Variable | Obligatoria | Descripción |
 |---|---|---|
 | `DATABASE_URL` | Sí | Conexión a PostgreSQL: `postgresql://USUARIO:PASSWORD@localhost:5432/gestion_turnos?schema=public` |
+| `JWT_SECRET` | Sí | Clave para firmar los tokens de sesión. Sin ella el servidor no arranca. Generar con `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`. |
 | `PORT` | No | Puerto del servidor. Por defecto `3000`. |
 | `CORS_ORIGIN` | No | Origen permitido para el front-end. Por defecto `http://localhost:4200`. |
 | `SEED_GESTION_NOMBRE` / `_EMAIL` / `_PASSWORD` | No | Cuenta de Gestión que crea `npm run db:seed`. |
@@ -157,15 +158,21 @@ Hay dos roles, definidos en [`src/constants/roles.constants.js`](src/constants/r
 
 Base: `http://localhost:3000/api`. Todas las requests y respuestas son JSON. Las respuestas exitosas devuelven `{ user: {...} }`; los errores devuelven `{ message: '...' }`.
 
+### Autenticación
+
+Todas las rutas salvo `/api/auth/*` exigen el header `Authorization: Bearer <token>` (el token que devuelven login y registro). Sin token o con token vencido → **401**.
+
+Permisos: **Gestión** puede todo. **Profesional** solo puede leer, y solo lo suyo: `GET /api/pacientes`, `GET /api/turnos` y `GET /api/profesionales` le devuelven únicamente sus datos aunque pida los de otro; cualquier alta, modificación o baja, y las lecturas exclusivas de Gestión (`/api/profesionales/fichas`, `/api/turnos/proximo`, `/api/mensajes/*`) → **403**.
+
 ### `POST /api/auth/login`
 
 ```json
-{ "email": "usuario@ejemplo.com", "password": "secreto" }
+{ "email": "usuario@ejemplo.com", "password": "secreto", "recordarme": false }
 ```
 
 | Código | Respuesta |
 |---|---|
-| 200 | `{ "user": { "id", "nombre", "email", "role" } }` |
+| 200 | `{ "user": { "id", "nombre", "email", "role" }, "token": "…" }` (el token dura 12 h, o 30 días con `recordarme: true`) |
 | 401 | Email o contraseña incorrectos. |
 
 ### `POST /api/auth/register`
@@ -178,7 +185,7 @@ Crea una cuenta con rol `profesional` e ignora cualquier `role` que mande el cli
 
 | Código | Respuesta |
 |---|---|
-| 201 | `{ "user": { "id", "nombre", "email", "role": "profesional" } }` |
+| 201 | `{ "user": { "id", "nombre", "email", "role": "profesional" }, "token": "…" }` |
 | 400 | Falta el nombre, el email no es válido o la contraseña tiene menos de 6 caracteres. |
 | 409 | Ya existe una cuenta con ese email (sin importar mayúsculas). |
 
