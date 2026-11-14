@@ -121,6 +121,12 @@ Reglas:
 - Si al editar un paciente se le quita un profesional, se cancelan (borran) los turnos futuros del paciente con ese profesional; los pasados se conservan (`PATCH /api/pacientes/:id` responde `{ paciente, turnosCancelados }`).
 - Al editar asignaciones hay que agregar las nuevas **antes** de quitar las viejas; si no, el trigger borraría al paciente al quedar momentáneamente sin profesionales.
 
+**`mensajes.turno_id`** (opcional): turno al que se refiere el mensaje (ej. el recordatorio de ese turno). Si se borra el turno, queda en null.
+
+`GET /api/dashboard/profesionales/:id?mesDesde=ISO&mesHasta=ISO&hoyDesde=ISO&hoyHasta=ISO` (solo Gestión): ficha resumida, indicadores del mes (pacientes atendidos, cobrado, pendiente, turnos) y turnos de hoy con estado de pago y de recordatorio.
+
+**`tareas`** — Motor de tareas: una por tipo (`recordatorio_turno`, `cobro_pendiente`) y turno. Estados `pendiente`, `completada`, `vencida`. Endpoints (solo Gestión): `POST /api/tareas/generar` (`{ hoyHasta }`, crea las que falten y actualiza estados), `GET /api/tareas[?hechas=true][&profesionalId=]`, `PATCH /api/tareas/:id/completar`.
+
 **`plantillas_mensajes`** — plantillas de WhatsApp guardadas por Gestión, una por tipo (`recordatorio_turno`, `cobro_pendiente`, `confirmacion_reserva`) y tono. Si no hay fila, se usa la plantilla por defecto de `src/constants/mensajes.constants.js`. Marcadores: `{nombre}`, `{paciente}`, `{profesional}`, `{fecha}`, `{hora}`.
 
 **`mensajes`** — registro de mensajes enviados a pacientes (`paciente_id`, `profesional_id`, `tipo`, `contenido`, `enviado_at`). Se borran si se borra el paciente.

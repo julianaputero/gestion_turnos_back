@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const { listPlantillas, savePlantilla, createMensaje } = require('../data/mensajes.repository');
 const { findPacienteById, isProfesionalAsignado } = require('../data/pacientes.repository');
+const { findTurnoById } = require('../data/turnos.repository');
 const { TIPOS_MENSAJE, MENSAJE_MAX } = require('../constants/mensajes.constants');
 const { requireGestion } = require('../middleware/auth');
 const { TONOS_COMUNICACION } = require('../constants/profesionales.constants');
@@ -42,10 +43,11 @@ router.put('/plantillas/:tipo/:tono', async (req, res) => {
 
 /**
  * POST /api/mensajes — registra un mensaje como enviado.
- * Body: { pacienteId, profesionalId, tipo, contenido }
+ * Body: { pacienteId, profesionalId, tipo, contenido, turnoId? }
+ * `turnoId` asocia el mensaje a un turno (ej. "recordatorio enviado" de ese turno).
  */
 router.post('/', async (req, res) => {
-  const { pacienteId, profesionalId, tipo, contenido } = req.body ?? {};
+  const { pacienteId, profesionalId, tipo, contenido, turnoId } = req.body ?? {};
   if (typeof pacienteId !== 'string' || typeof profesionalId !== 'string' || !isTipo(tipo)) {
     return res.status(400).json({ message: 'Faltan el paciente, el profesional o el tipo.' });
   }
@@ -60,7 +62,20 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ message: 'El paciente no está asignado a ese profesional.' });
   }
 
-  const mensaje = await createMensaje({ pacienteId, profesionalId, tipo, contenido: texto });
+  if (turnoId !== undefined && turnoId !== null) {
+    const turno = typeof turnoId === 'string' ? await findTurnoById(turnoId) : null;
+    if (!turno || turno.paciente.id !== pacienteId || turno.profesionalId !== profesionalId) {
+      return res.status(400).json({ message: 'El turno no corresponde a ese paciente y profesional.' });
+    }
+  }
+
+  const mensaje = await createMensaje({
+    pacienteId,
+    profesionalId,
+    tipo,
+    contenido: texto,
+    turnoId: turnoId ?? null,
+  });
   return res.status(201).json({ mensaje });
 });
 

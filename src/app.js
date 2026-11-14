@@ -8,6 +8,8 @@ const turnosRoutes = require('./routes/turnos.routes');
 const pacientesRoutes = require('./routes/pacientes.routes');
 const mensajesRoutes = require('./routes/mensajes.routes');
 const cobrosRoutes = require('./routes/cobros.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
+const tareasRoutes = require('./routes/tareas.routes');
 
 const app = express();
 
@@ -21,5 +23,7 @@ app.use('/api/turnos', requireAuth, turnosRoutes);
 app.use('/api/pacientes', requireAuth, pacientesRoutes);
 app.use('/api/mensajes', requireAuth, mensajesRoutes);
 app.use('/api/cobros', requireAuth, cobrosRoutes);
+app.use('/api/dashboard', requireAuth, dashboardRoutes);
+app.use('/api/tareas', requireAuth, tareasRoutes);
 
 module.exports = app;

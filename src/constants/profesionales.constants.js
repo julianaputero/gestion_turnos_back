@@ -13,6 +13,9 @@ const TONOS_COMUNICACION = {
 /** Límite de horas de anticipación del recordatorio (una semana). */
 const RECORDATORIO_MAX_HORAS = 168;
 
+/** Horas de anticipación si el profesional no tiene ficha (igual al default de Prisma). */
+const RECORDATORIO_HORAS_DEFAULT = 24;
+
 /** Largo máximo de los textos libres de la ficha (especialidad, matrícula, teléfono). */
 const FICHA_TEXTO_MAX = 120;
 
@@ -26,6 +29,7 @@ module.exports = {
   MODALIDADES,
   TONOS_COMUNICACION,
   RECORDATORIO_MAX_HORAS,
+  RECORDATORIO_HORAS_DEFAULT,
   FICHA_TEXTO_MAX,
   HONORARIO_MAX,
   LINK_TOKEN_BYTES,

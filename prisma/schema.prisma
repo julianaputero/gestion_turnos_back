@@ -34,6 +34,9 @@ model User {
   /// Mensajes enviados a pacientes en nombre de este profesional.
   mensajes Mensaje[]
 
+  /// Tareas que este usuario (Gestión) marcó como listas.
+  tareasCompletadas Tarea[]
+
   @@map("users")
 }
 
@@ -129,10 +132,14 @@ model Turno {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  profesional User     @relation(fields: [profesionalId], references: [id])
-  paciente    Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  profesional User      @relation(fields: [profesionalId], references: [id])
+  paciente    Paciente  @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
   /// Pago registrado del turno; si no hay, el turno está pendiente de cobro.
   pago        Pago?
+  /// Mensajes enviados sobre este turno (ej. el recordatorio).
+  mensajes    Mensaje[]
+  /// Tareas generadas por este turno (recordatorio, cobro).
+  tareas      Tarea[]
 
   @@index([inicio])
   @@index([profesionalId, inicio])
@@ -168,12 +175,17 @@ model Mensaje {
   tipo          TipoMensaje
   /// Texto final enviado (con los datos ya completados).
   contenido     String
+  /// Turno al que se refiere el mensaje (ej. el recordatorio de ese turno). Opcional: los
+  /// mensajes generales (cobro pendiente) no tienen turno. Si se borra el turno, queda null.
+  turnoId       String?     @map("turno_id")
   enviadoAt     DateTime    @default(now()) @map("enviado_at")
 
   paciente    Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
   profesional User     @relation(fields: [profesionalId], references: [id], onDelete: Cascade)
+  turno       Turno?   @relation(fields: [turnoId], references: [id], onDelete: SetNull)
 
   @@index([pacienteId, enviadoAt])
+  @@index([turnoId])
   @@map("mensajes")
 }
 
@@ -209,4 +221,38 @@ model Pago {
   turno Turno @relation(fields: [turnoId], references: [id], onDelete: Cascade)
 
   @@map("pagos")
+}
+
+/// Debe coincidir con TIPOS_TAREA (src/constants/tareas.constants.js) y con el front-end.
+enum TipoTarea {
+  recordatorio_turno
+  cobro_pendiente
+}
+
+/// Debe coincidir con ESTADOS_TAREA (src/constants/tareas.constants.js) y con el front-end.
+enum EstadoTarea {
+  pendiente
+  completada
+  /// Recordatorio que no se envió antes de que empezara el turno.
+  vencida
+}
+
+/// Tarea del "Motor de tareas", generada automáticamente a partir de un turno.
+/// Una por tipo y turno (no se duplica al regenerar).
+model Tarea {
+  id              String      @id @default(uuid())
+  tipo            TipoTarea
+  turnoId         String      @map("turno_id")
+  estado          EstadoTarea @default(pendiente)
+  completadaAt    DateTime?   @map("completada_at")
+  /// Quién la marcó como lista; null si se completó sola (ej. se envió el recordatorio).
+  completadaPorId String?     @map("completada_por_id")
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  turno         Turno @relation(fields: [turnoId], references: [id], onDelete: Cascade)
+  completadaPor User? @relation(fields: [completadaPorId], references: [id], onDelete: SetNull)
+
+  @@unique([tipo, turnoId])
+  @@index([estado])
+  @@map("tareas")
 }

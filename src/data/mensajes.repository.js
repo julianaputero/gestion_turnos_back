@@ -35,9 +35,10 @@ async function savePlantilla({ tipo, tono, contenido }) {
 }
 
 /** Registra un mensaje enviado. */
-function createMensaje({ pacienteId, profesionalId, tipo, contenido }) {
+/** Registra un mensaje enviado (`turnoId` opcional: el turno al que se refiere). */
+function createMensaje({ pacienteId, profesionalId, tipo, contenido, turnoId = null }) {
   return prisma.mensaje.create({
-    data: { pacienteId, profesionalId, tipo, contenido },
+    data: { pacienteId, profesionalId, tipo, contenido, turnoId },
     select: { id: true, tipo: true, enviadoAt: true },
   });
 }
