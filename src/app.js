@@ -7,6 +7,7 @@ const profesionalesRoutes = require('./routes/profesionales.routes');
 const turnosRoutes = require('./routes/turnos.routes');
 const pacientesRoutes = require('./routes/pacientes.routes');
 const mensajesRoutes = require('./routes/mensajes.routes');
+const cobrosRoutes = require('./routes/cobros.routes');
 
 const app = express();
 
@@ -19,5 +20,6 @@ app.use('/api/profesionales', requireAuth, profesionalesRoutes);
 app.use('/api/turnos', requireAuth, turnosRoutes);
 app.use('/api/pacientes', requireAuth, pacientesRoutes);
 app.use('/api/mensajes', requireAuth, mensajesRoutes);
+app.use('/api/cobros', requireAuth, cobrosRoutes);
 
 module.exports = app;

@@ -131,6 +131,8 @@ model Turno {
 
   profesional User     @relation(fields: [profesionalId], references: [id])
   paciente    Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  /// Pago registrado del turno; si no hay, el turno está pendiente de cobro.
+  pago        Pago?
 
   @@index([inicio])
   @@index([profesionalId, inicio])
@@ -173,4 +175,38 @@ model Mensaje {
 
   @@index([pacienteId, enviadoAt])
   @@map("mensajes")
+}
+
+/// Debe coincidir con MEDIOS_PAGO (src/constants/cobros.constants.js) y con el front-end.
+enum MedioPago {
+  transferencia
+  efectivo
+  mercado_pago
+  tarjeta
+  otro
+}
+
+/// Pago de un turno (uno por turno), cargado a mano por Gestión con los datos del comprobante.
+model Pago {
+  id         String    @id @default(uuid())
+  turnoId    String    @unique @map("turno_id")
+  /// Monto cobrado (pesos). Por defecto, el honorario base del profesional.
+  monto      Decimal   @db.Decimal(12, 2)
+  medio      MedioPago
+  /// Número de operación o referencia del comprobante (ej. "TR-982103").
+  referencia String?
+  fechaPago  DateTime  @map("fecha_pago") @db.Date
+
+  /// Archivo del comprobante (opcional). La clave es la ruta dentro del almacenamiento
+  /// (carpeta local o Cloudflare R2, según STORAGE_DRIVER); el archivo no vive en la base.
+  comprobanteKey    String? @map("comprobante_key")
+  comprobanteNombre String? @map("comprobante_nombre")
+  comprobanteTipo   String? @map("comprobante_tipo")
+  comprobanteBytes  Int?    @map("comprobante_bytes")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  turno Turno @relation(fields: [turnoId], references: [id], onDelete: Cascade)
+
+  @@map("pagos")
 }

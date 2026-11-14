@@ -44,6 +44,8 @@ Todo se configura con variables de entorno en `back-end/.env`. Ese archivo **no 
 |---|---|---|
 | `DATABASE_URL` | Sí | Conexión a PostgreSQL: `postgresql://USUARIO:PASSWORD@localhost:5432/gestion_turnos?schema=public` |
 | `JWT_SECRET` | Sí | Clave para firmar los tokens de sesión. Sin ella el servidor no arranca. Generar con `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`. |
+| `STORAGE_DRIVER` | No | Dónde se guardan los archivos subidos: `local` (por defecto) o `r2` (Cloudflare R2, pendiente). |
+| `STORAGE_LOCAL_DIR` | No | Carpeta para `STORAGE_DRIVER=local`. Por defecto `uploads`. |
 | `PORT` | No | Puerto del servidor. Por defecto `3000`. |
 | `CORS_ORIGIN` | No | Origen permitido para el front-end. Por defecto `http://localhost:4200`. |
 | `SEED_GESTION_NOMBRE` / `_EMAIL` / `_PASSWORD` | No | Cuenta de Gestión que crea `npm run db:seed`. |
@@ -124,6 +126,22 @@ Reglas:
 **`mensajes`** — registro de mensajes enviados a pacientes (`paciente_id`, `profesional_id`, `tipo`, `contenido`, `enviado_at`). Se borran si se borra el paciente.
 
 Endpoints: `GET /api/mensajes/plantillas`, `PUT /api/mensajes/plantillas/:tipo/:tono` (`{ contenido }`), `POST /api/mensajes` (`{ pacienteId, profesionalId, tipo, contenido }`), `GET /api/turnos/proximo?pacienteId=&profesionalId=`.
+
+**`pagos`** — pago de un turno (uno por turno). Un turno ya atendido sin fila acá está pendiente de cobro.
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `turno_id` | UUID, único | Referencia a `turnos.id`. Si se borra el turno, se borra el pago. |
+| `monto` | decimal(12,2) | Monto cobrado. |
+| `medio` | enum `MedioPago` | `transferencia`, `efectivo`, `mercado_pago`, `tarjeta`, `otro`. |
+| `referencia` | texto, opcional | Número de operación del comprobante. |
+| `fecha_pago` | fecha | |
+| `comprobante_key` | texto, opcional | Ruta del archivo dentro del almacenamiento (ej. `comprobantes/<uuid>.pdf`). El archivo no está en la base. |
+| `comprobante_nombre`, `comprobante_tipo`, `comprobante_bytes` | opcionales | Nombre original, tipo (JPG/PNG/WebP/PDF) y tamaño del archivo. |
+
+Endpoints (solo Gestión): `GET /api/cobros?desde=ISO&hasta=ISO` (turnos ya atendidos por profesional, con su pago o pendientes), `POST /api/cobros/:turnoId/pago` (`{ monto, medio, referencia?, fechaPago: "YYYY-MM-DD" }`), `DELETE /api/cobros/:turnoId/pago` (anula y borra el archivo), `PUT /api/cobros/:turnoId/comprobante` (multipart, campo `archivo`, máx. 5 MB), `GET /api/cobros/:turnoId/comprobante` (descarga), `DELETE /api/cobros/:turnoId/comprobante`.
+
+**Archivos subidos:** se guardan según `STORAGE_DRIVER` (`local` = carpeta `uploads/`, no versionada; `r2` = Cloudflare R2, pendiente). Ver `src/storage/`.
 
 **`profesionales`** — ficha de cada usuario con rol `profesional` (1 a 1 con `users`)
 

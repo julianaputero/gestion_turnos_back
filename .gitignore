@@ -1,2 +1,4 @@
 node_modules/
 .env
+# Archivos subidos (comprobantes) con STORAGE_DRIVER=local
+uploads/
