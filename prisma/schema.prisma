@@ -31,6 +31,9 @@ model User {
   /// Ficha del profesional (solo existe para usuarios con rol profesional).
   profesional Profesional?
 
+  /// Mensajes enviados a pacientes en nombre de este profesional.
+  mensajes Mensaje[]
+
   @@map("users")
 }
 
@@ -96,6 +99,7 @@ model Paciente {
   /// Si se borra la última asignación, un trigger borra al paciente (ver migración).
   profesionales PacienteProfesional[]
   turnos        Turno[]
+  mensajes      Mensaje[]
 
   @@index([apellido, nombre])
   @@map("pacientes")
@@ -131,4 +135,42 @@ model Turno {
   @@index([inicio])
   @@index([profesionalId, inicio])
   @@map("turnos")
+}
+
+/// Debe coincidir con TIPOS_MENSAJE (src/constants/mensajes.constants.js) y con el front-end.
+enum TipoMensaje {
+  recordatorio_turno
+  cobro_pendiente
+  confirmacion_reserva
+}
+
+/// Plantilla de mensaje guardada por Gestión para un tipo y un tono. Si no hay fila para
+/// un par (tipo, tono), se usa la plantilla por defecto de `mensajes.constants.js`.
+/// El contenido usa marcadores: {nombre}, {paciente}, {profesional}, {fecha}, {hora}.
+model PlantillaMensaje {
+  id        String           @id @default(uuid())
+  tipo      TipoMensaje
+  tono      TonoComunicacion
+  contenido String
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  @@unique([tipo, tono])
+  @@map("plantillas_mensajes")
+}
+
+/// Registro de un mensaje enviado a un paciente (por ahora, por WhatsApp desde la app).
+model Mensaje {
+  id            String      @id @default(uuid())
+  pacienteId    String      @map("paciente_id")
+  profesionalId String      @map("profesional_id")
+  tipo          TipoMensaje
+  /// Texto final enviado (con los datos ya completados).
+  contenido     String
+  enviadoAt     DateTime    @default(now()) @map("enviado_at")
+
+  paciente    Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  profesional User     @relation(fields: [profesionalId], references: [id], onDelete: Cascade)
+
+  @@index([pacienteId, enviadoAt])
+  @@map("mensajes")
 }

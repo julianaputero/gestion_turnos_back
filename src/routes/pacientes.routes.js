@@ -8,6 +8,7 @@ const {
   deletePaciente,
 } = require('../data/pacientes.repository');
 const { countProfesionales } = require('../data/profesionales.repository');
+const { normalizeTelefono } = require('../utils/telefono');
 const {
   DNI_REGEX,
   PACIENTE_TEXTO_MAX,
@@ -47,6 +48,10 @@ function parsePaciente(body) {
     return { error: `Las notas no pueden superar ${PACIENTE_NOTAS_MAX} caracteres.` };
   }
   if (campos.email && !campos.email.includes('@')) return { error: 'El email no es válido.' };
+
+  const { telefono, error: errorTelefono } = normalizeTelefono(campos.telefono);
+  if (errorTelefono) return { error: errorTelefono };
+  campos.telefono = telefono;
 
   const dniTexto = optionalText(body.dni);
   if (dniTexto === undefined) return { error: 'El DNI no es válido.' };

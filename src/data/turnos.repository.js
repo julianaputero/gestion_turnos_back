@@ -48,6 +48,15 @@ function findOverlappingTurno({ profesionalId, pacienteId, inicio, fin, excludeI
   });
 }
 
+/** Próximo turno (que todavía no empezó) del paciente con ese profesional, o null. */
+function findProximoTurno({ pacienteId, profesionalId }) {
+  return prisma.turno.findFirst({
+    where: { pacienteId, profesionalId, inicio: { gte: new Date() } },
+    orderBy: { inicio: 'asc' },
+    select: TURNO_FIELDS,
+  });
+}
+
 function createTurno({ pacienteId, profesionalId, inicio, fin, notas }) {
   return prisma.turno.create({
     data: { pacienteId, profesionalId, inicio, fin, notas },
@@ -67,6 +76,7 @@ module.exports = {
   listTurnos,
   findTurnoById,
   findOverlappingTurno,
+  findProximoTurno,
   createTurno,
   updateHorario,
   deleteTurno,

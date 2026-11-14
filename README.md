@@ -118,6 +118,12 @@ Reglas:
 - Si al editar un paciente se le quita un profesional, se cancelan (borran) los turnos futuros del paciente con ese profesional; los pasados se conservan (`PATCH /api/pacientes/:id` responde `{ paciente, turnosCancelados }`).
 - Al editar asignaciones hay que agregar las nuevas **antes** de quitar las viejas; si no, el trigger borraría al paciente al quedar momentáneamente sin profesionales.
 
+**`plantillas_mensajes`** — plantillas de WhatsApp guardadas por Gestión, una por tipo (`recordatorio_turno`, `cobro_pendiente`, `confirmacion_reserva`) y tono. Si no hay fila, se usa la plantilla por defecto de `src/constants/mensajes.constants.js`. Marcadores: `{nombre}`, `{paciente}`, `{profesional}`, `{fecha}`, `{hora}`.
+
+**`mensajes`** — registro de mensajes enviados a pacientes (`paciente_id`, `profesional_id`, `tipo`, `contenido`, `enviado_at`). Se borran si se borra el paciente.
+
+Endpoints: `GET /api/mensajes/plantillas`, `PUT /api/mensajes/plantillas/:tipo/:tono` (`{ contenido }`), `POST /api/mensajes` (`{ pacienteId, profesionalId, tipo, contenido }`), `GET /api/turnos/proximo?pacienteId=&profesionalId=`.
+
 **`profesionales`** — ficha de cada usuario con rol `profesional` (1 a 1 con `users`)
 
 | Columna | Tipo | Notas |

@@ -14,6 +14,7 @@ const pacienteFields = () => ({
   activo: true,
   turnos: { where: { inicio: { gte: new Date() } }, select: { id: true } },
   _count: { select: { turnos: true } },
+  mensajes: { orderBy: { enviadoAt: 'desc' }, take: 1, select: { tipo: true, enviadoAt: true } },
   profesionales: {
     select: { profesional: { select: { id: true, nombre: true } } },
     orderBy: { profesional: { nombre: "asc" } },
@@ -21,9 +22,10 @@ const pacienteFields = () => ({
 });
 
 /** Aplana las asignaciones (`profesionales: [{ id, nombre }]`) y los conteos de turnos. */
-function toPaciente({ profesionales, _count, turnos, ...paciente }) {
+function toPaciente({ profesionales, _count, turnos, mensajes, ...paciente }) {
   return {
     ...paciente,
+    ultimoMensaje: mensajes[0] ?? null,
     cantidadTurnos: _count.turnos,
     turnosFuturos: turnos.length,
     profesionales: profesionales.map(({ profesional }) => profesional),

@@ -7,6 +7,7 @@ const {
   FICHA_TEXTO_MAX,
   HONORARIO_MAX,
 } = require('../constants/profesionales.constants');
+const { normalizeTelefono } = require('../utils/telefono');
 
 const router = Router();
 
@@ -29,6 +30,12 @@ function parseFicha(body) {
       return { error: `${nombre} no puede superar ${FICHA_TEXTO_MAX} caracteres.` };
     }
     cambios[campo] = texto || null;
+  }
+
+  if (cambios.telefono) {
+    const { telefono, error } = normalizeTelefono(cambios.telefono);
+    if (error) return { error };
+    cambios.telefono = telefono;
   }
 
   if ('activo' in body) {

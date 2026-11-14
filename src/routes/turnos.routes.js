@@ -3,6 +3,7 @@ const {
   listTurnos,
   findTurnoById,
   findOverlappingTurno,
+  findProximoTurno,
   createTurno,
   updateHorario,
   deleteTurno,
@@ -71,6 +72,15 @@ router.get('/', async (req, res) => {
   });
 
   return res.json({ turnos });
+});
+
+/** GET /api/turnos/proximo?pacienteId=...&profesionalId=... — { turno } o { turno: null }. */
+router.get('/proximo', async (req, res) => {
+  const { pacienteId, profesionalId } = req.query;
+  if (typeof pacienteId !== 'string' || typeof profesionalId !== 'string') {
+    return res.status(400).json({ message: 'Indicá el paciente y el profesional.' });
+  }
+  return res.json({ turno: await findProximoTurno({ pacienteId, profesionalId }) });
 });
 
 /** POST /api/turnos — Body: { pacienteId, profesionalId, inicio: ISO, fin: ISO, notas? } */
