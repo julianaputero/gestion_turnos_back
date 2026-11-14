@@ -1,5 +1,6 @@
-const prisma = require("./prisma");
-const { PACIENTE_ESTADOS } = require("../constants/pacientes.constants");
+const prisma = require('./prisma');
+const { PACIENTE_ESTADOS } = require('../constants/pacientes.constants');
+const { clavesDeComprobantes, borrarArchivos } = require('../storage/comprobantes');
 
 const PACIENTE_RESUMEN_FIELDS = { id: true, nombre: true, apellido: true };
 
@@ -17,7 +18,7 @@ const pacienteFields = () => ({
   mensajes: { orderBy: { enviadoAt: 'desc' }, take: 1, select: { tipo: true, enviadoAt: true } },
   profesionales: {
     select: { profesional: { select: { id: true, nombre: true } } },
-    orderBy: { profesional: { nombre: "asc" } },
+    orderBy: { profesional: { nombre: 'asc' } },
   },
 });
 
@@ -41,9 +42,9 @@ function estadoWhere(estado) {
 
 /** Minúsculas y sin acentos, para comparar "perez" con "Pérez". */
 function normalize(text) {
-  return String(text ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+  return String(text ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 }
 
@@ -51,11 +52,8 @@ function normalize(text) {
 function matches(paciente, terms) {
   const texto = normalize(`${paciente.nombre} ${paciente.apellido}`);
   return terms.every((term) => {
-    const digits = term.replace(/\D/g, "");
-    return (
-      texto.includes(term) ||
-      (digits.length > 0 && (paciente.dni ?? "").includes(digits))
-    );
+    const digits = term.replace(/\D/g, '');
+    return texto.includes(term) || (digits.length > 0 && (paciente.dni ?? '').includes(digits));
   });
 }
 
@@ -71,7 +69,7 @@ async function listPacientes({ q, profesionalId, estado } = {}) {
       ...(profesionalId ? { profesionales: { some: { profesionalId } } } : {}),
     },
     select: pacienteFields(),
-    orderBy: [{ apellido: "asc" }, { nombre: "asc" }],
+    orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],
   });
 
   const terms = normalize(q).split(/\s+/).filter(Boolean);
@@ -130,7 +128,7 @@ async function createPaciente({ profesionalIds, ...data }) {
 async function updatePaciente(id, { profesionalIds, ...data }) {
   if (!(await findPacienteById(id))) return null;
 
-  const turnosCancelados = await prisma.$transaction(async (tx) => {
+  const { turnosCancelados, claves } = await prisma.$transaction(async (tx) => {
     await tx.paciente.update({ where: { id }, data });
     await tx.pacienteProfesional.createMany({
       data: profesionalIds.map((profesionalId) => ({
@@ -142,15 +140,16 @@ async function updatePaciente(id, { profesionalIds, ...data }) {
     await tx.pacienteProfesional.deleteMany({
       where: { pacienteId: id, profesionalId: { notIn: profesionalIds } },
     });
-    const { count } = await tx.turno.deleteMany({
-      where: {
-        pacienteId: id,
-        profesionalId: { notIn: profesionalIds },
-        inicio: { gte: new Date() },
-      },
-    });
-    return count;
+    const cancelar = {
+      pacienteId: id,
+      profesionalId: { notIn: profesionalIds },
+      inicio: { gte: new Date() },
+    };
+    const clavesCancelados = await clavesDeComprobantes(tx, cancelar);
+    const { count } = await tx.turno.deleteMany({ where: cancelar });
+    return { turnosCancelados: count, claves: clavesCancelados };
   });
+  await borrarArchivos(claves);
 
   const paciente = await prisma.paciente.findUnique({
     where: { id },
@@ -167,14 +166,15 @@ async function updatePaciente(id, { profesionalIds, ...data }) {
 async function setPacienteActivo(id, activo) {
   if (!(await findPacienteById(id))) return null;
 
-  const turnosCancelados = await prisma.$transaction(async (tx) => {
+  const { turnosCancelados, claves } = await prisma.$transaction(async (tx) => {
     await tx.paciente.update({ where: { id }, data: { activo } });
-    if (activo) return 0;
-    const { count } = await tx.turno.deleteMany({
-      where: { pacienteId: id, inicio: { gte: new Date() } },
-    });
-    return count;
+    if (activo) return { turnosCancelados: 0, claves: [] };
+    const cancelar = { pacienteId: id, inicio: { gte: new Date() } };
+    const clavesCancelados = await clavesDeComprobantes(tx, cancelar);
+    const { count } = await tx.turno.deleteMany({ where: cancelar });
+    return { turnosCancelados: count, claves: clavesCancelados };
   });
+  await borrarArchivos(claves);
 
   const paciente = await prisma.paciente.findUnique({
     where: { id },
@@ -184,18 +184,26 @@ async function setPacienteActivo(id, activo) {
 }
 
 /**
- * Borra al paciente para siempre. Sus turnos y asignaciones se borran en cascada
- * (`ON DELETE CASCADE` en la base). Devuelve cuántos turnos se borraron, o null si no existe.
+ * Borra al paciente para siempre. Sus turnos, pagos y asignaciones se borran en cascada
+ * (`ON DELETE CASCADE` en la base) y los archivos de comprobantes, del almacenamiento.
+ * Devuelve cuántos turnos se borraron, o null si no existe.
  */
 async function deletePaciente(id) {
-  const paciente = await prisma.paciente.findUnique({
-    where: { id },
-    select: { _count: { select: { turnos: true } } },
-  });
-  if (!paciente) return null;
+  const resultado = await prisma.$transaction(async (tx) => {
+    const paciente = await tx.paciente.findUnique({
+      where: { id },
+      select: { _count: { select: { turnos: true } } },
+    });
+    if (!paciente) return null;
 
-  await prisma.paciente.delete({ where: { id } });
-  return paciente._count.turnos;
+    const claves = await clavesDeComprobantes(tx, { pacienteId: id });
+    await tx.paciente.delete({ where: { id } });
+    return { turnos: paciente._count.turnos, claves };
+  });
+  if (!resultado) return null;
+
+  await borrarArchivos(resultado.claves);
+  return resultado.turnos;
 }
 
 module.exports = {

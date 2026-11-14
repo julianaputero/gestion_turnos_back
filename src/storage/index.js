@@ -2,6 +2,7 @@
  * Almacenamiento de archivos con una interfaz única, para poder cambiar dónde se guardan
  * sin tocar el resto del código:
  *   guardar(key, buffer)  ·  leer(key) → Buffer | null  ·  borrar(key)
+ *   listar(prefijo) → claves (para `npm run storage:limpiar`)
  *
  * El driver se elige con STORAGE_DRIVER en el .env: `local` (carpeta del disco, desarrollo)
  * o `r2` (Cloudflare R2, producción; pendiente de implementar con su API compatible con S3).

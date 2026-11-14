@@ -141,6 +141,8 @@ Endpoints: `GET /api/mensajes/plantillas`, `PUT /api/mensajes/plantillas/:tipo/:
 
 Endpoints (solo Gestión): `GET /api/cobros?desde=ISO&hasta=ISO` (turnos ya atendidos por profesional, con su pago o pendientes), `POST /api/cobros/:turnoId/pago` (`{ monto, medio, referencia?, fechaPago: "YYYY-MM-DD" }`), `DELETE /api/cobros/:turnoId/pago` (anula y borra el archivo), `PUT /api/cobros/:turnoId/comprobante` (multipart, campo `archivo`, máx. 5 MB), `GET /api/cobros/:turnoId/comprobante` (descarga), `DELETE /api/cobros/:turnoId/comprobante`.
 
+**Limpieza:** al borrar un turno, un paciente o un pago, se borra también el archivo. `npm run storage:limpiar` lista archivos huérfanos y `npm run storage:limpiar -- --borrar` los elimina.
+
 **Archivos subidos:** se guardan según `STORAGE_DRIVER` (`local` = carpeta `uploads/`, no versionada; `r2` = Cloudflare R2, pendiente). Ver `src/storage/`.
 
 **`profesionales`** — ficha de cada usuario con rol `profesional` (1 a 1 con `users`)

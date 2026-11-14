@@ -9,6 +9,7 @@
  */
 require('../src/config/env');
 const prisma = require('../src/data/prisma');
+const { clavesDeComprobantes, borrarArchivos } = require('../src/storage/comprobantes');
 const { listProfesionales } = require('../src/data/profesionales.repository');
 
 /** Pacientes ficticios: [nombre, apellido]. DNI, contacto y cobertura se generan abajo. */
@@ -64,10 +65,12 @@ async function main() {
   }
 
   if (RESET) {
+    const claves = await clavesDeComprobantes(prisma, {});
     const [turnosBorrados, pacientesBorrados] = await prisma.$transaction([
       prisma.turno.deleteMany(),
       prisma.paciente.deleteMany(),
     ]);
+    await borrarArchivos(claves);
     console.log(
       `[seed-demo] --reset: borrados ${pacientesBorrados.count} pacientes y ${turnosBorrados.count} turnos.`,
     );

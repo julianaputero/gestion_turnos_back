@@ -29,6 +29,23 @@ module.exports = {
     }
   },
 
+  /** Claves de todos los archivos guardados dentro de `prefijo` (ej. "comprobantes"). */
+  async listar(prefijo) {
+    const carpeta = rutaDe(prefijo);
+    try {
+      const nombres = await fs.readdir(carpeta, { recursive: true, withFileTypes: true });
+      return nombres
+        .filter((entrada) => entrada.isFile())
+        .map((entrada) =>
+          path.relative(STORAGE_LOCAL_DIR, path.join(entrada.parentPath, entrada.name)),
+        )
+        .map((clave) => clave.split(path.sep).join('/'));
+    } catch (error) {
+      if (error.code === 'ENOENT') return [];
+      throw error;
+    }
+  },
+
   /** Borra el archivo (si no existe, no hace nada). */
   async borrar(key) {
     await fs.rm(rutaDe(key), { force: true });

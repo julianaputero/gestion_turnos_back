@@ -1,4 +1,5 @@
 const prisma = require('./prisma');
+const { clavesDeComprobantes, borrarArchivos } = require('../storage/comprobantes');
 
 const TURNO_FIELDS = {
   id: true,
@@ -68,8 +69,14 @@ function updateHorario(id, { inicio, fin }) {
   return prisma.turno.update({ where: { id }, data: { inicio, fin }, select: TURNO_FIELDS });
 }
 
-function deleteTurno(id) {
-  return prisma.turno.delete({ where: { id } });
+/** Borra el turno (y su pago, en cascada) y el archivo del comprobante si tenía. */
+async function deleteTurno(id) {
+  const claves = await prisma.$transaction(async (tx) => {
+    const encontradas = await clavesDeComprobantes(tx, { id });
+    await tx.turno.delete({ where: { id } });
+    return encontradas;
+  });
+  await borrarArchivos(claves);
 }
 
 module.exports = {

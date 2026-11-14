@@ -11,6 +11,7 @@
     "db:seed": "node prisma/seed.js",
     "db:seed:demo": "node prisma/seed-demo.js",
     "db:studio": "prisma studio",
+    "storage:limpiar": "node scripts/limpiar-archivos.js",
     "postinstall": "prisma generate"
   },
   "keywords": [],
