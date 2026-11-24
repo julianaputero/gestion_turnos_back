@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { getDashboardProfesional } = require('../data/dashboard.repository');
+const { getDashboardProfesional, getPanel } = require('../data/dashboard.repository');
 const { requireGestion } = require('../middleware/auth');
 
 const router = Router();
@@ -11,6 +11,19 @@ function parseDate(value) {
   const date = new Date(typeof value === 'string' ? value : NaN);
   return Number.isNaN(date.getTime()) ? null : date;
 }
+
+/**
+ * GET /api/dashboard/panel?hoyHasta=ISO — Panel Principal: una tarjeta por profesional con
+ * su semáforo, turnos próximos, cobros pendientes y tareas pendientes. `hoyHasta` es el fin
+ * del día de hoy en la zona horaria del front-end.
+ */
+router.get('/panel', async (req, res) => {
+  const hoyHasta = parseDate(req.query.hoyHasta);
+  if (!hoyHasta) {
+    return res.status(400).json({ message: 'Indicá "hoyHasta" (fin del día de hoy, ISO 8601).' });
+  }
+  return res.json({ profesionales: await getPanel({ hoyHasta }) });
+});
 
 /**
  * GET /api/dashboard/profesionales/:id?mesDesde=ISO&mesHasta=ISO&hoyDesde=ISO&hoyHasta=ISO

@@ -123,6 +123,8 @@ Reglas:
 
 **`mensajes.turno_id`** (opcional): turno al que se refiere el mensaje (ej. el recordatorio de ese turno). Si se borra el turno, queda en null.
 
+`GET /api/dashboard/panel?hoyHasta=ISO` (solo Gestión): Panel Principal, una tarjeta por profesional con semáforo (`rojo` / `amarillo` / `verde`), turnos próximos (7 días), cobros pendientes (últimos 30 días) y sus tareas pendientes. Ordenado con los rojos primero.
+
 `GET /api/dashboard/profesionales/:id?mesDesde=ISO&mesHasta=ISO&hoyDesde=ISO&hoyHasta=ISO` (solo Gestión): ficha resumida, indicadores del mes (pacientes atendidos, cobrado, pendiente, turnos) y turnos de hoy con estado de pago y de recordatorio.
 
 **`tareas`** — Motor de tareas: una por tipo (`recordatorio_turno`, `cobro_pendiente`) y turno. Estados `pendiente`, `completada`, `vencida`. Endpoints (solo Gestión): `POST /api/tareas/generar` (`{ hoyHasta }`, crea las que falten y actualiza estados), `GET /api/tareas[?hechas=true][&profesionalId=]`, `PATCH /api/tareas/:id/completar`, `PATCH /api/tareas/:id/reabrir` (vuelve a pendiente; solo las marcadas a mano).
