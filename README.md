@@ -127,6 +127,7 @@ Reglas:
 
 **`tareas`** — Motor de tareas: una por tipo (`recordatorio_turno`, `cobro_pendiente`) y turno. Estados `pendiente`, `completada`, `vencida`. Endpoints (solo Gestión): `POST /api/tareas/generar` (`{ hoyHasta }`, crea las que falten y actualiza estados), `GET /api/tareas[?hechas=true][&profesionalId=]`, `PATCH /api/tareas/:id/completar`, `PATCH /api/tareas/:id/reabrir` (vuelve a pendiente; solo las marcadas a mano).
 
+**Reportes** — `GET /api/reportes/mensual?profesionalId=&desde=ISO&hasta=ISO` (máx. 32 días): turnos del mes de un profesional (horario, paciente, cobertura, monto, estado `cobrado` / `pendiente` / `agendado`) y resumen (cobrado, pendiente, por cobrar, total, cobrado por medio de pago). Gestión elige el profesional; un Profesional siempre recibe el suyo.
 
 **`plantillas_mensajes`** — plantillas de WhatsApp guardadas por Gestión, una por tipo (`recordatorio_turno`, `cobro_pendiente`, `confirmacion_reserva`) y tono. Si no hay fila, se usa la plantilla por defecto de `src/constants/mensajes.constants.js`. Marcadores: `{nombre}`, `{paciente}`, `{profesional}`, `{fecha}`, `{hora}`.
 

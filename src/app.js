@@ -10,6 +10,7 @@ const mensajesRoutes = require('./routes/mensajes.routes');
 const cobrosRoutes = require('./routes/cobros.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const tareasRoutes = require('./routes/tareas.routes');
+const reportesRoutes = require('./routes/reportes.routes');
 
 const app = express();
 
@@ -25,5 +26,7 @@ app.use('/api/mensajes', requireAuth, mensajesRoutes);
 app.use('/api/cobros', requireAuth, cobrosRoutes);
 app.use('/api/dashboard', requireAuth, dashboardRoutes);
 app.use('/api/tareas', requireAuth, tareasRoutes);
+// Reportes: Gestión ve el de cualquier profesional; un Profesional, solo el suyo.
+app.use('/api/reportes', requireAuth, reportesRoutes);
 
 module.exports = app;
