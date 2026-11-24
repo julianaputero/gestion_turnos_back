@@ -167,4 +167,30 @@ async function completarTarea(id, userId) {
   return toTarea(tarea);
 }
 
-module.exports = { generarTareas, listTareas, completarTarea };
+/**
+ * "Volver a pendiente": deshace un "Marcar lista". Solo para tareas completadas a mano;
+ * las que se completaron solas o vencieron se volverían a cerrar al sincronizar.
+ * Devuelve `{ tarea }`, `{ error }` si no se puede, o null si no existe.
+ */
+async function reabrirTarea(id) {
+  const actual = await prisma.tarea.findUnique({
+    where: { id },
+    select: { estado: true, completadaPorId: true },
+  });
+  if (!actual) return null;
+  if (actual.estado !== ESTADOS_TAREA.completada || !actual.completadaPorId) {
+    return {
+      error:
+        'Solo se pueden volver a pendiente las tareas marcadas a mano. Si se completó sola, deshacé lo que la completó (por ejemplo, anulá el pago).',
+    };
+  }
+
+  const tarea = await prisma.tarea.update({
+    where: { id },
+    data: { estado: ESTADOS_TAREA.pendiente, completadaAt: null, completadaPorId: null },
+    select: TAREA_SELECT,
+  });
+  return { tarea: toTarea(tarea) };
+}
+
+module.exports = { generarTareas, listTareas, completarTarea, reabrirTarea };
