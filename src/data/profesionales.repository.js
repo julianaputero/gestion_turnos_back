@@ -35,10 +35,9 @@ const FICHA_FIELDS = {
   activo: true,
   honorarioBase: true,
   telefono: true,
-  modalidades: true,
+  modalidad: true,
   diasAtencion: true,
   recordatorioHorasAntes: true,
-  tonoComunicacion: true,
   linkToken: true,
 };
 
@@ -53,10 +52,9 @@ function toFicha({ id, nombre, email, profesional }) {
     activo: profesional.activo,
     honorarioBase: profesional.honorarioBase === null ? null : Number(profesional.honorarioBase),
     telefono: profesional.telefono,
-    modalidades: profesional.modalidades,
+    modalidad: profesional.modalidad,
     diasAtencion: profesional.diasAtencion,
     recordatorioHorasAntes: profesional.recordatorioHorasAntes,
-    tono: profesional.tonoComunicacion,
     linkToken: profesional.linkToken,
   };
 }
@@ -85,15 +83,20 @@ async function listFichas() {
  * Actualiza la ficha del profesional (`userId`) con los campos dados.
  * Devuelve la ficha actualizada, o null si ese usuario no tiene ficha.
  */
+/** Ficha de un profesional (`userId`), o null si no tiene. */
+async function getFicha(userId) {
+  const user = await prisma.user.findFirst({
+    where: { id: userId, profesional: { isNot: null } },
+    select: FICHA_USER_SELECT,
+  });
+  return user ? toFicha(user) : null;
+}
+
 async function updateFicha(userId, cambios) {
   const existe = await prisma.profesional.findUnique({ where: { userId }, select: { id: true } });
   if (!existe) return null;
 
-  const { tono, ...resto } = cambios;
-  await prisma.profesional.update({
-    where: { userId },
-    data: { ...resto, ...(tono !== undefined ? { tonoComunicacion: tono } : {}) },
-  });
+  await prisma.profesional.update({ where: { userId }, data: cambios });
 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: FICHA_USER_SELECT });
   return toFicha(user);
@@ -104,6 +107,7 @@ module.exports = {
   findProfesionalById,
   countProfesionales,
   listFichas,
+  getFicha,
   updateFicha,
   generateLinkToken,
 };

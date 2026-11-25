@@ -32,7 +32,7 @@ const toNumber = (decimal) => (decimal === null || decimal === undefined ? null 
 
 /**
  * Resumen de un profesional para el "Dashboard por Profesional":
- * - `profesional`: datos de su ficha (especialidad, matrícula, tono, honorario).
+ * - `profesional`: datos de su ficha (especialidad, matrícula, honorario).
  * - `kpis` del período [mesDesde, mesHasta): pacientes atendidos (distintos, con turnos que
  *   ya empezaron), cobrado y pendiente (de esos turnos atendidos) y turnos agendados.
  * - `recordatorios`: todos los turnos de hoy (desde `hoyDesde`) y, si el profesional pidió
@@ -52,7 +52,6 @@ async function getDashboardProfesional(id, { mesDesde, mesHasta, hoyDesde, hoyHa
           especialidad: true,
           matricula: true,
           honorarioBase: true,
-          tonoComunicacion: true,
           recordatorioHorasAntes: true,
         },
       },
@@ -100,7 +99,6 @@ async function getDashboardProfesional(id, { mesDesde, mesHasta, hoyDesde, hoyHa
       especialidad: user.profesional?.especialidad ?? null,
       matricula: user.profesional?.matricula ?? null,
       honorarioBase,
-      tono: user.profesional?.tonoComunicacion ?? null,
     },
     kpis: {
       pacientesAtendidos: new Set(atendidos.map((turno) => turno.pacienteId)).size,

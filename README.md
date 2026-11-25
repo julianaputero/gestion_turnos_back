@@ -131,11 +131,11 @@ Reglas:
 
 **Reportes** — `GET /api/reportes/mensual?profesionalId=&desde=ISO&hasta=ISO` (máx. 32 días): turnos del mes de un profesional (horario, paciente, cobertura, monto, estado `cobrado` / `pendiente` / `agendado`) y resumen (cobrado, pendiente, por cobrar, total, cobrado por medio de pago). Gestión elige el profesional; un Profesional siempre recibe el suyo.
 
-**`plantillas_mensajes`** — plantillas de WhatsApp guardadas por Gestión, una por tipo (`recordatorio_turno`, `cobro_pendiente`, `confirmacion_reserva`) y tono. Si no hay fila, se usa la plantilla por defecto de `src/constants/mensajes.constants.js`. Marcadores: `{nombre}`, `{paciente}`, `{profesional}`, `{fecha}`, `{hora}`.
+**`plantillas_mensajes`** — plantillas de WhatsApp personalizadas de cada profesional: una por profesional (`profesional_id` → `users.id`, se borran si se borra el profesional) y tipo (`recordatorio_turno`, `cobro_pendiente`, `confirmacion_reserva`). Si un profesional no tiene fila para un tipo, se usa la plantilla por defecto de `src/constants/mensajes.constants.js`. Marcadores: `{nombre}`, `{paciente}`, `{profesional}`, `{fecha}`, `{hora}`.
 
 **`mensajes`** — registro de mensajes enviados a pacientes (`paciente_id`, `profesional_id`, `tipo`, `contenido`, `enviado_at`). Se borran si se borra el paciente.
 
-Endpoints: `GET /api/mensajes/plantillas`, `PUT /api/mensajes/plantillas/:tipo/:tono` (`{ contenido }`), `POST /api/mensajes` (`{ pacienteId, profesionalId, tipo, contenido }`), `GET /api/turnos/proximo?pacienteId=&profesionalId=`.
+Endpoints: `GET /api/mensajes/plantillas?profesionalId=` (las 3 del profesional, con `contenidoDefault` y `personalizada`), `PUT /api/mensajes/plantillas/:profesionalId/:tipo` (`{ contenido }`), `DELETE /api/mensajes/plantillas/:profesionalId/:tipo` (vuelve a la de por defecto), `POST /api/mensajes` (`{ pacienteId, profesionalId, tipo, contenido }`), `GET /api/turnos/proximo?pacienteId=&profesionalId=`.
 
 **`pagos`** — pago de un turno (uno por turno). Un turno ya atendido sin fila acá está pendiente de cobro.
 
@@ -164,10 +164,9 @@ Endpoints (solo Gestión): `GET /api/cobros?desde=ISO&hasta=ISO` (turnos ya aten
 | `especialidad`, `matricula`, `telefono` | texto, opcional | |
 | `activo` | booleano | Por defecto `true`. |
 | `honorario_base` | decimal(12,2), opcional | Honorario por consulta, en pesos. |
-| `modalidades` | lista de enum `Modalidad` | `presencial`, `virtual`. |
+| `modalidad` | enum `Modalidad`, opcional | Una sola: `presencial`, `virtual` o `mixta` (atiende de las dos formas). Vacío = sin definir. |
 | `dias_atencion` | lista de enteros | 0 = domingo … 6 = sábado. |
 | `recordatorio_horas_antes` | entero | Horas de anticipación con que se avisa al paciente. Por defecto `24`. |
-| `tono_comunicacion` | enum `TonoComunicacion` | `cercano`, `formal` o `neutro` (por defecto). |
 | `link_token` | texto, único | Token del link de solo lectura. Se genera al crear el profesional. |
 | `created_at`, `updated_at` | timestamp | Automáticos. |
 
@@ -205,9 +204,13 @@ Permisos: **Gestión** puede todo. **Profesional** solo puede leer, y solo lo su
 | 200 | `{ "user": { "id", "nombre", "email", "role" }, "token": "…" }` (el token dura 12 h, o 30 días con `recordarme: true`) |
 | 401 | Email o contraseña incorrectos. |
 
-### `POST /api/auth/register`
+### Alta de cuentas
 
-Crea una cuenta con rol `profesional` e ignora cualquier `role` que mande el cliente.
+**No hay registro público.** Las cuentas de profesionales las crea Gestión desde la app (sección Fichas Profesionales → "Nuevo profesional"), y las de Gestión se crean con `npm run db:seed`.
+
+### `POST /api/profesionales` (solo Gestión)
+
+Crea un usuario con rol `profesional` y su ficha con valores por defecto.
 
 ```json
 { "nombre": "Dra. Ana López", "email": "ana@ejemplo.com", "password": "secreto" }
@@ -215,11 +218,10 @@ Crea una cuenta con rol `profesional` e ignora cualquier `role` que mande el cli
 
 | Código | Respuesta |
 |---|---|
-| 201 | `{ "user": { "id", "nombre", "email", "role": "profesional" }, "token": "…" }` |
+| 201 | `{ "ficha": { … } }` (misma forma que `GET /api/profesionales/fichas`) |
 | 400 | Falta el nombre, el email no es válido o la contraseña tiene menos de 6 caracteres. |
+| 403 | Quien lo pide no es Gestión. |
 | 409 | Ya existe una cuenta con ese email (sin importar mayúsculas). |
-
-Por ahora no hay tokens ni sesiones del lado del servidor: el front-end guarda el usuario devuelto por login/registro.
 
 ## Estructura
 
@@ -238,7 +240,7 @@ back-end/
     │   ├── prisma.js            # Cliente único de Prisma
     │   └── users.repository.js  # Acceso a la tabla users
     └── routes/
-        └── auth.routes.js       # /api/auth/login y /api/auth/register
+        └── auth.routes.js       # /api/auth/login
 ```
 
 ## Convenciones

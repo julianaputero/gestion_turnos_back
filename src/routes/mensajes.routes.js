@@ -1,10 +1,15 @@
 const { Router } = require('express');
-const { listPlantillas, savePlantilla, createMensaje } = require('../data/mensajes.repository');
+const {
+  listPlantillas,
+  savePlantilla,
+  deletePlantilla,
+  createMensaje,
+} = require('../data/mensajes.repository');
 const { findPacienteById, isProfesionalAsignado } = require('../data/pacientes.repository');
 const { findTurnoById } = require('../data/turnos.repository');
 const { TIPOS_MENSAJE, MENSAJE_MAX } = require('../constants/mensajes.constants');
 const { requireGestion } = require('../middleware/auth');
-const { TONOS_COMUNICACION } = require('../constants/profesionales.constants');
+const { findProfesionalById } = require('../data/profesionales.repository');
 
 const router = Router();
 
@@ -23,22 +28,45 @@ function parseContenido(contenido) {
   return { texto };
 }
 
-/** GET /api/mensajes/plantillas — una plantilla por tipo y tono. */
-router.get('/plantillas', async (_req, res) => {
-  res.json({ plantillas: await listPlantillas() });
+/** `{ status, message }` si el profesional o el tipo no son válidos; si no, null. */
+async function plantillaInvalida(profesionalId, tipo) {
+  if (tipo !== undefined && !isTipo(tipo)) {
+    return { status: 400, message: 'El tipo de plantilla no es válido.' };
+  }
+  if (typeof profesionalId !== 'string' || !(await findProfesionalById(profesionalId))) {
+    return { status: 404, message: 'El profesional no existe.' };
+  }
+  return null;
+}
+
+/** GET /api/mensajes/plantillas?profesionalId=… — las 3 plantillas de ese profesional. */
+router.get('/plantillas', async (req, res) => {
+  const { profesionalId } = req.query;
+  const invalida = await plantillaInvalida(profesionalId);
+  if (invalida) return res.status(invalida.status).json({ message: invalida.message });
+
+  return res.json({ plantillas: await listPlantillas(profesionalId) });
 });
 
-/** PUT /api/mensajes/plantillas/:tipo/:tono — Body: { contenido } (con marcadores). */
-router.put('/plantillas/:tipo/:tono', async (req, res) => {
-  const { tipo, tono } = req.params;
-  if (!isTipo(tipo) || !Object.values(TONOS_COMUNICACION).includes(tono)) {
-    return res.status(400).json({ message: 'El tipo o el tono de la plantilla no es válido.' });
-  }
+/** PUT /api/mensajes/plantillas/:profesionalId/:tipo — Body: { contenido } (con marcadores). */
+router.put('/plantillas/:profesionalId/:tipo', async (req, res) => {
+  const { profesionalId, tipo } = req.params;
+  const invalida = await plantillaInvalida(profesionalId, tipo);
+  if (invalida) return res.status(invalida.status).json({ message: invalida.message });
 
   const { texto, error } = parseContenido(req.body?.contenido);
   if (error) return res.status(400).json({ message: error });
 
-  return res.json({ plantilla: await savePlantilla({ tipo, tono, contenido: texto }) });
+  return res.json({ plantilla: await savePlantilla({ profesionalId, tipo, contenido: texto }) });
+});
+
+/** DELETE /api/mensajes/plantillas/:profesionalId/:tipo — vuelve a la plantilla por defecto. */
+router.delete('/plantillas/:profesionalId/:tipo', async (req, res) => {
+  const { profesionalId, tipo } = req.params;
+  const invalida = await plantillaInvalida(profesionalId, tipo);
+  if (invalida) return res.status(invalida.status).json({ message: invalida.message });
+
+  return res.json({ plantilla: await deletePlantilla({ profesionalId, tipo }) });
 });
 
 /**

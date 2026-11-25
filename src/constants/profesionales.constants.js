@@ -1,14 +1,11 @@
-/** Deben coincidir con los enums de Prisma (`Modalidad`, `TonoComunicacion`) y con el front-end. */
+/** Deben coincidir con el enum `Modalidad` de Prisma y con el front-end. */
 const MODALIDADES = {
   presencial: 'presencial',
   virtual: 'virtual',
+  /** Atiende de las dos formas. */
+  mixta: 'mixta',
 };
 
-const TONOS_COMUNICACION = {
-  cercano: 'cercano',
-  formal: 'formal',
-  neutro: 'neutro',
-};
 
 /** Límite de horas de anticipación del recordatorio (una semana). */
 const RECORDATORIO_MAX_HORAS = 168;
@@ -27,7 +24,6 @@ const LINK_TOKEN_BYTES = 16;
 
 module.exports = {
   MODALIDADES,
-  TONOS_COMUNICACION,
   RECORDATORIO_MAX_HORAS,
   RECORDATORIO_HORAS_DEFAULT,
   FICHA_TEXTO_MAX,

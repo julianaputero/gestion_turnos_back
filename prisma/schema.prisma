@@ -37,6 +37,9 @@ model User {
   /// Tareas que este usuario (Gestión) marcó como listas.
   tareasCompletadas Tarea[]
 
+  /// Plantillas de mensajes personalizadas de este profesional.
+  plantillasMensajes PlantillaMensaje[]
+
   @@map("users")
 }
 
@@ -44,36 +47,31 @@ model User {
 enum Modalidad {
   presencial
   virtual
-}
-
-/// Debe coincidir con TONOS_COMUNICACION (src/constants/profesionales.constants.js) y con el front-end.
-enum TonoComunicacion {
-  cercano
-  formal
-  neutro
+  /// Atiende de las dos formas.
+  mixta
 }
 
 /// Ficha de un profesional: datos de contacto, agenda, honorarios y reglas de mensajes.
 /// Relación 1 a 1 con `users` (rol profesional).
 model Profesional {
-  id                     String           @id @default(uuid())
-  userId                 String           @unique @map("user_id")
+  id                     String     @id @default(uuid())
+  userId                 String     @unique @map("user_id")
   especialidad           String?
   matricula              String?
-  activo                 Boolean          @default(true)
+  activo                 Boolean    @default(true)
   /// Honorario base por consulta (pesos).
-  honorarioBase          Decimal?         @map("honorario_base") @db.Decimal(12, 2)
+  honorarioBase          Decimal?   @map("honorario_base") @db.Decimal(12, 2)
   telefono               String?
-  modalidades            Modalidad[]      @default([])
+  /// Una sola: presencial, virtual o mixta. Null = sin definir.
+  modalidad              Modalidad?
   /// Días de atención: 0 = domingo … 6 = sábado.
-  diasAtencion           Int[]            @default([]) @map("dias_atencion")
+  diasAtencion           Int[]      @default([]) @map("dias_atencion")
   /// Con cuántas horas de anticipación se le avisa al paciente antes del turno.
-  recordatorioHorasAntes Int              @default(24) @map("recordatorio_horas_antes")
-  tonoComunicacion       TonoComunicacion @default(neutro) @map("tono_comunicacion")
+  recordatorioHorasAntes Int        @default(24) @map("recordatorio_horas_antes")
   /// Token del link de solo lectura que se le comparte al profesional.
-  linkToken              String           @unique @map("link_token")
-  createdAt              DateTime         @default(now()) @map("created_at")
-  updatedAt              DateTime         @updatedAt @map("updated_at")
+  linkToken              String     @unique @map("link_token")
+  createdAt              DateTime   @default(now()) @map("created_at")
+  updatedAt              DateTime   @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -153,17 +151,19 @@ enum TipoMensaje {
   confirmacion_reserva
 }
 
-/// Plantilla de mensaje guardada por Gestión para un tipo y un tono. Si no hay fila para
-/// un par (tipo, tono), se usa la plantilla por defecto de `mensajes.constants.js`.
+/// Plantilla de mensaje personalizada de un profesional para un tipo. Si un profesional no
+/// tiene fila para un tipo, se usa la plantilla por defecto de `mensajes.constants.js`.
 /// El contenido usa marcadores: {nombre}, {paciente}, {profesional}, {fecha}, {hora}.
 model PlantillaMensaje {
-  id        String           @id @default(uuid())
-  tipo      TipoMensaje
-  tono      TonoComunicacion
-  contenido String
-  updatedAt DateTime         @updatedAt @map("updated_at")
+  id            String      @id @default(uuid())
+  profesionalId String      @map("profesional_id")
+  tipo          TipoMensaje
+  contenido     String
+  updatedAt     DateTime    @updatedAt @map("updated_at")
 
-  @@unique([tipo, tono])
+  profesional User @relation(fields: [profesionalId], references: [id], onDelete: Cascade)
+
+  @@unique([profesionalId, tipo])
   @@map("plantillas_mensajes")
 }
 

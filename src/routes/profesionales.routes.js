@@ -1,8 +1,14 @@
 const { Router } = require('express');
-const { listProfesionales, listFichas, updateFicha } = require('../data/profesionales.repository');
+const {
+  listProfesionales,
+  listFichas,
+  getFicha,
+  updateFicha,
+} = require('../data/profesionales.repository');
+const { findByEmail, addProfesional } = require('../data/users.repository');
+const { PASSWORD_MIN_LENGTH } = require('../constants/auth.constants');
 const {
   MODALIDADES,
-  TONOS_COMUNICACION,
   RECORDATORIO_MAX_HORAS,
   FICHA_TEXTO_MAX,
   HONORARIO_MAX,
@@ -58,13 +64,12 @@ function parseFicha(body) {
     cambios.honorarioBase = honorarioBase === null ? null : Math.round(honorarioBase * 100) / 100;
   }
 
-  if ('modalidades' in body) {
-    const { modalidades } = body;
-    const validas = Object.values(MODALIDADES);
-    if (!Array.isArray(modalidades) || modalidades.some((m) => !validas.includes(m))) {
-      return { error: 'Las modalidades no son válidas.' };
+  if ('modalidad' in body) {
+    const { modalidad } = body;
+    if (modalidad !== null && !Object.values(MODALIDADES).includes(modalidad)) {
+      return { error: 'La modalidad no es válida.' };
     }
-    cambios.modalidades = validas.filter((m) => modalidades.includes(m));
+    cambios.modalidad = modalidad;
   }
 
   if ('diasAtencion' in body) {
@@ -85,13 +90,6 @@ function parseFicha(body) {
     cambios.recordatorioHorasAntes = horas;
   }
 
-  if ('tono' in body) {
-    if (!Object.values(TONOS_COMUNICACION).includes(body.tono)) {
-      return { error: 'El tono de comunicación no es válido.' };
-    }
-    cambios.tono = body.tono;
-  }
-
   return { cambios };
 }
 
@@ -107,6 +105,35 @@ router.get('/', async (req, res) => {
 /** GET /api/profesionales/fichas — ficha completa de cada profesional. */
 router.get('/fichas', requireGestion, async (_req, res) => {
   res.json({ fichas: await listFichas() });
+});
+
+/**
+ * POST /api/profesionales — Gestión crea la cuenta de un profesional (no hay registro
+ * público). Body: { nombre, email, password } → { ficha } (la ficha nace con valores por
+ * defecto y se completa con el PATCH de abajo).
+ */
+router.post('/', requireGestion, async (req, res) => {
+  const { nombre, email, password } = req.body ?? {};
+
+  if (
+    typeof nombre !== 'string' ||
+    !nombre.trim() ||
+    typeof email !== 'string' ||
+    !email.includes('@') ||
+    typeof password !== 'string' ||
+    password.length < PASSWORD_MIN_LENGTH
+  ) {
+    return res.status(400).json({
+      message: `Completá nombre, email y una contraseña de al menos ${PASSWORD_MIN_LENGTH} caracteres.`,
+    });
+  }
+
+  if (await findByEmail(email)) {
+    return res.status(409).json({ message: 'Ya existe una cuenta con ese email.' });
+  }
+
+  const user = await addProfesional({ nombre: nombre.trim(), email, password });
+  return res.status(201).json({ ficha: await getFicha(user.id) });
 });
 
 /** PATCH /api/profesionales/:id/ficha — actualización parcial de la ficha (`:id` = id del usuario). */
