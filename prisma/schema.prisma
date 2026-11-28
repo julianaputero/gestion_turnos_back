@@ -68,8 +68,6 @@ model Profesional {
   diasAtencion           Int[]      @default([]) @map("dias_atencion")
   /// Con cuántas horas de anticipación se le avisa al paciente antes del turno.
   recordatorioHorasAntes Int        @default(24) @map("recordatorio_horas_antes")
-  /// Token del link de solo lectura que se le comparte al profesional.
-  linkToken              String     @unique @map("link_token")
   createdAt              DateTime   @default(now()) @map("created_at")
   updatedAt              DateTime   @updatedAt @map("updated_at")
 

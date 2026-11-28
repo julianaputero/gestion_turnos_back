@@ -1,12 +1,5 @@
-const { randomBytes } = require('node:crypto');
 const prisma = require('./prisma');
 const { USER_ROLES } = require('../constants/roles.constants');
-const { LINK_TOKEN_BYTES } = require('../constants/profesionales.constants');
-
-/** Token nuevo para el link de solo lectura de un profesional. */
-function generateLinkToken() {
-  return randomBytes(LINK_TOKEN_BYTES).toString('hex');
-}
 
 /** Lista de profesionales (id y nombre), ordenada alfabéticamente. */
 function listProfesionales() {
@@ -38,7 +31,6 @@ const FICHA_FIELDS = {
   modalidad: true,
   diasAtencion: true,
   recordatorioHorasAntes: true,
-  linkToken: true,
 };
 
 /** Une los datos del usuario con su ficha en un solo objeto plano para la API. */
@@ -55,7 +47,6 @@ function toFicha({ id, nombre, email, profesional }) {
     modalidad: profesional.modalidad,
     diasAtencion: profesional.diasAtencion,
     recordatorioHorasAntes: profesional.recordatorioHorasAntes,
-    linkToken: profesional.linkToken,
   };
 }
 
@@ -109,5 +100,4 @@ module.exports = {
   listFichas,
   getFicha,
   updateFicha,
-  generateLinkToken,
 };

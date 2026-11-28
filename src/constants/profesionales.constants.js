@@ -19,8 +19,6 @@ const FICHA_TEXTO_MAX = 120;
 /** Honorario base máximo aceptado (entra en DECIMAL(12,2)). */
 const HONORARIO_MAX = 9999999999.99;
 
-/** Bytes aleatorios del token del link de solo lectura (se guarda en hex: el doble de caracteres). */
-const LINK_TOKEN_BYTES = 16;
 
 module.exports = {
   MODALIDADES,
@@ -28,5 +26,4 @@ module.exports = {
   RECORDATORIO_HORAS_DEFAULT,
   FICHA_TEXTO_MAX,
   HONORARIO_MAX,
-  LINK_TOKEN_BYTES,
 };

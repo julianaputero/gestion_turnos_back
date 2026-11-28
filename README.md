@@ -167,7 +167,6 @@ Endpoints (solo Gestión): `GET /api/cobros?desde=ISO&hasta=ISO` (turnos ya aten
 | `modalidad` | enum `Modalidad`, opcional | Una sola: `presencial`, `virtual` o `mixta` (atiende de las dos formas). Vacío = sin definir. |
 | `dias_atencion` | lista de enteros | 0 = domingo … 6 = sábado. |
 | `recordatorio_horas_antes` | entero | Horas de anticipación con que se avisa al paciente. Por defecto `24`. |
-| `link_token` | texto, único | Token del link de solo lectura. Se genera al crear el profesional. |
 | `created_at`, `updated_at` | timestamp | Automáticos. |
 
 Todo profesional nuevo (registro o seed) se crea con su ficha. La migración `add_profesionales` le creó una ficha vacía a cada profesional que ya existía.
@@ -192,6 +191,8 @@ Base: `http://localhost:3000/api`. Todas las requests y respuestas son JSON. Las
 Todas las rutas salvo `/api/auth/*` exigen el header `Authorization: Bearer <token>` (el token que devuelven login y registro). Sin token o con token vencido → **401**.
 
 Permisos: **Gestión** puede todo. **Profesional** solo puede leer, y solo lo suyo: `GET /api/pacientes`, `GET /api/turnos` y `GET /api/profesionales` le devuelven únicamente sus datos aunque pida los de otro; cualquier alta, modificación o baja, y las lecturas exclusivas de Gestión (`/api/profesionales/fichas`, `/api/turnos/proximo`, `/api/mensajes/*`) → **403**.
+
+**Ver como profesional:** un usuario Gestión puede mandar el header `X-Ver-Como: <id de un profesional>` y el pedido se atiende como si lo hiciera ese profesional (mismas reglas: solo lo suyo). Es **solo lectura**: con ese header, cualquier método que no sea GET/HEAD responde 403. Si lo manda un Profesional → 403; si el id no es de un profesional → 404.
 
 ### `POST /api/auth/login`
 
